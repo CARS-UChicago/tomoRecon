@@ -95,19 +95,19 @@ tomoSupervisor::tomoSupervisor(tomoParams_t *pTomoParams, float *pAngles, float 
   int i;
   int status;
   
-  debugFile = stdout;
-  #ifdef _WIN32
-  if (debug_) {
-    debugFile = fopen("tomoReconDebug.out", "w");
-  }
-  #endif
-  
   // Set static variables that need to outlive the object
   tomoAbort = 0;
   tomoDebug = pTomoParams_->debug;
   pTomoSupervisor = this;
   reconComplete = 0;
   slicesRemaining = pTomoParams_->numSlices;
+  
+  debugFile = stdout;
+  #ifdef _WIN32
+  if (tomoDebug) {
+    debugFile = fopen("tomoReconDebug.out", "w");
+  }
+  #endif
   
   queueElements_ = (pTomoParams_->numSlices+1)/2;
   toDoQueue_ = epicsMessageQueueCreate(queueElements_, sizeof(toDoMessage_t));
@@ -392,7 +392,7 @@ void tomoWorker::sinogram(float *pIn, float *pOut, float *air)
   int numPixels = pTS_->numPixels_;
   int numSlices = pTS_->numSlices_;
   int sinOffset = (paddedWidth - numPixels)/2;
-  float airLeft, airRight, airSlope;
+  float airLeft, airRight, airSlope, ratio;
   float *pInData;
   float *pOutData;
   
@@ -406,6 +406,8 @@ void tomoWorker::sinogram(float *pIn, float *pOut, float *air)
       }
       airLeft /= numAir;
       airRight /= numAir;
+      if (airLeft <= 0.) airLeft = 1.;
+      if (airRight <= 0.) airRight = 1.;
       airSlope = (airRight - airLeft)/(numPixels - 1);
     }
     else {
@@ -423,7 +425,9 @@ void tomoWorker::sinogram(float *pIn, float *pOut, float *air)
     }
     else {
       for (j=0; j<numPixels; j++) {
-        pOutData[sinOffset + j] = -log(pInData[j]/air[j]);
+        ratio = pInData[j]/air[j];
+        if (ratio <= 0.) ratio = 1.;
+        pOutData[sinOffset + j] = -log(ratio);
       }
     }
   }
