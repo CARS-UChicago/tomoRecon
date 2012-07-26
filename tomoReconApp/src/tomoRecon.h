@@ -58,25 +58,24 @@ typedef struct {
   int ltbl;		      /* No. elements in convolvent lookup tables. */
 } tomoParams_t;
 
-/* Externally callable functions, can be called from C */
 #ifdef __cplusplus
-extern "C" {
-#endif
-int tomoReconStart(tomoParams_t *pTomoParams, float *pAngles, float *pInput, float *pOutput);
-int tomoReconPoll(int *reconComplete, int *slicesRemaining);
-int tomoReconAbort();
-#ifdef __cplusplus
-}
-#endif
+typedef struct {
+  class tomoRecon *pTomoRecon;
+  epicsEventId doneEventId;
+} workerCreateStruct;
 
-
-#ifdef __cplusplus
-class tomoSupervisor {
+class tomoRecon {
 public:
-  tomoSupervisor(tomoParams_t *pTomoParams, float *pAngles, float *pInput, float *pOutput);
-  ~tomoSupervisor();
-  virtual void abort();
+  tomoRecon(tomoParams_t *pTomoParams, float *pAngles, float *pInput, float *pOutput);
+  ~tomoRecon();
   virtual void supervisorTask();
+  virtual void workerTask(epicsEventId workerDoneEvent);
+  virtual void sinogram(float *pIn, float *pOut, float *air);
+  virtual void poll(int *pReconComplete, int *pSlicesRemaining);
+  virtual void abort();
+  virtual void logMsg(const char *pFormat, ...);
+  int reconComplete_;
+  int slicesRemaining_;
 
 private:
   tomoParams_t *pTomoParams_;
@@ -89,24 +88,12 @@ private:
   float *pInput_;
   float *pOutput_;
   int queueElements_;
+  int debug_;
+  FILE *debugFile_;
+  int shutDown_;
   epicsMessageQueueId toDoQueue_;
   epicsMessageQueueId doneQueue_;
   epicsEventId *workerDoneEventIds_;
   epicsMutexId fftwMutexId_;
-  
-friend class tomoWorker;
-};
-
-class tomoWorker {
-public:
-  tomoWorker(tomoSupervisor *pTomoSupervisor, int taskNum, epicsEventId doneEventId);
-  ~tomoWorker();
-  virtual void workerTask();
-  virtual void sinogram(float *pIn, float *pOut, float *air);
-
-private:
-  tomoSupervisor *pTS_;
-  int taskNum_;
-  epicsEventId doneEventId_;
 };
 #endif
