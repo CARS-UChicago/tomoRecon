@@ -21,9 +21,9 @@ LIB_INSTALLS    += ../os/windows-x64/libfftw3f-3.lib
 BIN_INSTALLS    += ../os/windows-x64/libfftw3f-3.dll
 endif
 
-tomoRecon_SRCS += tomoReconIDL.c
 tomoRecon_SRCS += tomoRecon.cpp
 tomoRecon_SRCS += grid.cpp pswf.c filters.c
+tomoRecon_SRCS += tomoReconIDL.cpp
 
 tomoRecon_LIBS_WIN32 += libfftw3f-3
 tomoRecon_SYS_LIBS_Linux += fftw3f
