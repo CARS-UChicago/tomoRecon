@@ -25,13 +25,11 @@ static void supervisorTask(void *pPvt)
 {
   tomoRecon *pTomoRecon = (tomoRecon *)pPvt;
   pTomoRecon->supervisorTask();
-  pTomoRecon->logMsg("Exiting supervisor C task.");
 }
 
 static void workerTask(workerCreateStruct *pWCS)
 {
   pWCS->pTomoRecon->workerTask(pWCS->doneEventId);
-  pWCS->pTomoRecon->logMsg("Freeing pWCS %s.", epicsThreadGetNameSelf());
   free(pWCS);
 }
 } // extern "C"
@@ -208,7 +206,8 @@ void tomoRecon::workerTask(epicsEventId doneEventId)
   toDoMessage_t toDoMessage;
   doneMessage_t doneMessage;
   epicsTimeStamp tStart, tStop;
-  long imageSize;
+  long reconSize;
+  int imageSize;
   int status;
   float *pOut;
   int i;
@@ -237,21 +236,23 @@ void tomoRecon::workerTask(epicsEventId doneEventId)
 
   // Must take a mutex when creating grid object, because it creates fftw plans, which is not thread safe
   epicsMutexLock(fftwMutexId_);
-  pGrid = new grid(&gridStruct, &sgStruct, &imageSize);
+  pGrid = new grid(&gridStruct, &sgStruct, &reconSize);
   epicsMutexUnlock(fftwMutexId_);
 
-  sinOffset = (imageSize - numPixels_)/2;
+  sinOffset = (reconSize - numPixels_)/2;
   if (sinOffset < 0) sinOffset = 0;
+  imageSize = reconSize;
+  if (imageSize > numPixels_) imageSize = numPixels_;
 
   sin1   = (float *) calloc(paddedWidth_ * numProjections_, sizeof(float));
   sin2   = (float *) calloc(paddedWidth_ * numProjections_, sizeof(float));
   air    = (float *) malloc(paddedWidth_*sizeof(float));
-  recon1 = (float *) calloc(imageSize * imageSize, sizeof(float));
-  recon2 = (float *) calloc(imageSize * imageSize, sizeof(float));  
+  recon1 = (float *) calloc(reconSize * reconSize, sizeof(float));
+  recon2 = (float *) calloc(reconSize * reconSize, sizeof(float));  
   S1     = (float **) malloc(numProjections_ * sizeof(float *));
   S2     = (float **) malloc(numProjections_ * sizeof(float *));
-  R1     = (float **) malloc(imageSize * sizeof(float *));
-  R2     = (float **) malloc(imageSize * sizeof(float *));
+  R1     = (float **) malloc(reconSize * sizeof(float *));
+  R2     = (float **) malloc(reconSize * sizeof(float *));
 
   /* We are passed addresses of arrays (float *), while Gridrec
      wants a pointer to a table of the starting address of each row.
@@ -264,9 +265,9 @@ void tomoRecon::workerTask(epicsEventId doneEventId)
   }
   R1[0] = recon1;
   R2[0] = recon2;
-  for (i=1; i<imageSize; i++) {
-      R1[i] = R1[i-1] + imageSize;
-      R2[i] = R2[i-1] + imageSize;
+  for (i=1; i<reconSize; i++) {
+      R1[i] = R1[i-1] + reconSize;
+      R2[i] = R2[i-1] + reconSize;
   }
 
   while(1) {
@@ -289,16 +290,16 @@ void tomoRecon::workerTask(epicsEventId doneEventId)
     epicsTimeGetCurrent(&tStart);
     pGrid->recon(S1, S2, &R1, &R2);
     // Copy to output array, discard padding
-    for (i=0, pOut=toDoMessage.pOut1, pRecon=recon1+sinOffset*imageSize; 
-         i<numPixels_;
-         i++, pOut+=numPixels_, pRecon+=imageSize) {
-      memcpy(pOut, pRecon+sinOffset, numPixels_*sizeof(float));
+    for (i=0, pOut=toDoMessage.pOut1, pRecon=recon1+sinOffset*reconSize; 
+         i<imageSize;
+         i++, pOut+=numPixels_, pRecon+=reconSize) {
+      memcpy(pOut, pRecon+sinOffset, imageSize*sizeof(float));
     }
     if (doneMessage.numSlices == 2) {
-      for (i=0, pOut=toDoMessage.pOut2, pRecon=recon2+sinOffset*imageSize; 
-           i<numPixels_;
-           i++, pOut+=numPixels_, pRecon+=imageSize) {
-        memcpy(pOut, pRecon+sinOffset, numPixels_*sizeof(float));
+      for (i=0, pOut=toDoMessage.pOut2, pRecon=recon2+sinOffset*reconSize; 
+           i<imageSize;
+           i++, pOut+=numPixels_, pRecon+=reconSize) {
+        memcpy(pOut, pRecon+sinOffset, imageSize*sizeof(float));
       }
     }
     epicsTimeGetCurrent(&tStop);
