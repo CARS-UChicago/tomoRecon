@@ -132,7 +132,27 @@ grid::grid(grid_struct *GP,sg_struct *SGP, long *imgsiz)
   forward_1d_plan = fftwf_plan_dft_1d(pdim, (fftwf_complex *)cproj, (fftwf_complex *)cproj, FFTW_FORWARD, FFTW_MEASURE);
   backward_2d_plan = fftwf_plan_dft_2d(M, M, HData, HData, FFTW_BACKWARD, FFTW_MEASURE);
 
-}   /*** End recon_init() ***/
+}
+
+// Destructor
+grid::~grid()
+
+     /***** Release memory allocated by constructor ***/
+
+{
+  free(SINE);
+  free(COSE);
+  fftwf_free(cproj);
+  free(filphase);
+  free(wtbl);
+#ifdef INTERP
+  free(dwtbl);
+#endif
+  free(winv);
+  free(work);
+  free(H);
+  fftwf_free(HData);
+}
 
 
 
@@ -389,25 +409,6 @@ void grid::recon(float** G1,float** G2,float*** S1,float*** S2)
 
 }  /*** End do_recon() ***/
 
-
-grid::~grid()
-
-     /***** Release memory allocated by constructor ***/
-
-{
-  free(SINE);
-  free(COSE);
-  free(cproj);
-  free(filphase);
-  free(wtbl);
-#ifdef INTERP
-  free(dwtbl);
-#endif
-  free(winv);
-  free(work);
-  free(H);
-  free(HData);
-}
 
 
 void grid::filphase_su(long pd, float center,
