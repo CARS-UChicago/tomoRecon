@@ -95,5 +95,6 @@ private:
   epicsMessageQueueId doneQueue_;
   epicsEventId *workerDoneEventIds_;
   epicsMutexId fftwMutexId_;
+  epicsMutexId logMsgMutexId_;
 };
 #endif
