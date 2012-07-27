@@ -23,13 +23,15 @@
 extern "C" {
 static void supervisorTask(void *pPvt)
 {
-  tomoRecon *ptomoRecon = (tomoRecon *)pPvt;
-  ptomoRecon->supervisorTask();
+  tomoRecon *pTomoRecon = (tomoRecon *)pPvt;
+  pTomoRecon->supervisorTask();
+  pTomoRecon->logMsg("Exiting supervisor C task.");
 }
 
 static void workerTask(workerCreateStruct *pWCS)
 {
   pWCS->pTomoRecon->workerTask(pWCS->doneEventId);
+  pWCS->pTomoRecon->logMsg("Freeing pWCS %s.", epicsThreadGetNameSelf());
   free(pWCS);
 }
 } // extern "C"
@@ -77,6 +79,7 @@ tomoRecon::tomoRecon(tomoParams_t *pTomoParams, float *pAngles, float *pInput, f
   doneQueue_ = epicsMessageQueueCreate(queueElements_, sizeof(doneMessage_t));
   workerDoneEventIds_ = (epicsEventId *) malloc(numThreads_ * sizeof(epicsEventId));
   fftwMutexId_ = epicsMutexCreate();
+  logMsgMutexId_ = epicsMutexCreate();
 
   // Fill up the toDoQueue with slices to be reconstructed
   for (i=0; i<queueElements_; i++) {
@@ -124,6 +127,7 @@ tomoRecon::~tomoRecon()
   epicsMessageQueueDestroy(doneQueue_);
   for (i=0; i<numThreads_; i++) epicsEventDestroy(workerDoneEventIds_[i]);
   epicsMutexDestroy(fftwMutexId_);
+  epicsMutexDestroy(logMsgMutexId_);
   free(workerDoneEventIds_);
   if (debugFile_ != stdout) fclose(debugFile_);
 }
@@ -285,15 +289,11 @@ void tomoRecon::workerTask(epicsEventId doneEventId)
     epicsTimeGetCurrent(&tStart);
     pGrid->recon(S1, S2, &R1, &R2);
     // Copy to output array, discard padding
-if (debug_) logMsg("%s: %s doing memcpy slice %d, pOut=%p, sinOffset=%d, imageSize=%d",
-functionName, epicsThreadGetNameSelf(), toDoMessage.sliceNumber, toDoMessage.pOut1, sinOffset, imageSize);
     for (i=0, pOut=toDoMessage.pOut1, pRecon=recon1+sinOffset*imageSize; 
          i<numPixels_;
          i++, pOut+=numPixels_, pRecon+=imageSize) {
       memcpy(pOut, pRecon+sinOffset, numPixels_*sizeof(float));
     }
-if (debug_) logMsg("%s: %s doing memcpy slice %d, pOut=%p, sinOffset=%d, imageSize=%d",
-functionName, epicsThreadGetNameSelf(), toDoMessage.sliceNumber+1, toDoMessage.pOut2, sinOffset, imageSize);
     if (doneMessage.numSlices == 2) {
       for (i=0, pOut=toDoMessage.pOut2, pRecon=recon2+sinOffset*imageSize; 
            i<numPixels_;
@@ -324,13 +324,13 @@ functionName, epicsThreadGetNameSelf(), toDoMessage.sliceNumber+1, toDoMessage.p
   free(S2);
   free(R1);
   free(R2);
+  delete pGrid;
+  // Send an event so the supervisor knows this thread is done
+  epicsEventSignal(doneEventId);
   if (debug_ > 0) {
     logMsg("tomoRecon::workerTask %s exiting, eventId=%p", 
         epicsThreadGetNameSelf(), doneEventId);
   }
-  delete pGrid;
-  // Send an event so the supervisor knows this thread is done
-  epicsEventSignal(doneEventId);
 }
 
 void tomoRecon::sinogram(float *pIn, float *pOut, float *air)
@@ -385,6 +385,7 @@ void tomoRecon::logMsg(const char *pFormat, ...)
     epicsTimeStamp now;
     char nowText[40];
 
+    epicsMutexLock(logMsgMutexId_);
     epicsTimeGetCurrent(&now);
     nowText[0] = 0;
     epicsTimeToStrftime(nowText,sizeof(nowText),
@@ -393,7 +394,11 @@ void tomoRecon::logMsg(const char *pFormat, ...)
     va_start(pvar,pFormat);
     vfprintf(debugFile_, pFormat, pvar);
     va_end(pvar);
-    fprintf(debugFile_, "\r\n");
+    if (debugFile_ == stdout)
+        fprintf(debugFile_, "\r\n");
+    else
+        fprintf(debugFile_, "\n");
     fflush(debugFile_);
+    epicsMutexUnlock(logMsgMutexId_);
 }
 
