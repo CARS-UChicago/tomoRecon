@@ -8,9 +8,6 @@ SHARED_LIBRARIES = YES
 STATIC_BUILD = YES
 LIBRARY_HOST += tomoRecon
 
-USR_CFLAGS += -DIDL
-USR_CPPFLAGS += -DIDL
-
 # Note, the following files were manually copied from the fftw Windows distribution directories
 ifeq (win32-x86, $(findstring win32-x86, $(T_A)))
 LIB_INSTALLS    += ../os/win32-x86/libfftw3f-3.lib
