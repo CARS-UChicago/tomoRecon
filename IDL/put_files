@@ -1,0 +1,3 @@
+cp -fvp tomo_recon.pro          /usr/local/idl_user/tomography/
+cp -fvp tomo_recon_netcdf.pro   /usr/local/idl_user/tomography/
+cp -fvp tomo_params__define.pro /usr/local/idl_user/tomography/
