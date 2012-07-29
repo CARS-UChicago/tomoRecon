@@ -37,15 +37,14 @@ grid::grid(grid_struct *GP,sg_struct *SGP, long *imgsiz)
      /************************************************************/
 
 {
-  float center,C,MaxPixSiz,R,D0,D1;  /* 7/7/98 */
-  float (*filter)(float);
+  float C,MaxPixSiz,R,D0,D1;  /* 7/7/98 */
   long itmp;
 
   pswf_struct *pswf;
 
   n_ang=SGP->n_ang;
   n_det=SGP->n_det;
-  center=SGP->center;        
+  previousCenter = -1.;      
         
   sampl=GP->sampl;
   MaxPixSiz=GP->MaxPixSiz;
@@ -119,10 +118,6 @@ grid::grid(grid_struct *GP,sg_struct *SGP, long *imgsiz)
 
   trig_su(SGP,&SINE,&COSE);
 
-  /*** Set up table of combined filter-phase factors */
-
-  filphase_su(pdim,center,filter,filphase);           
-
   /*** Set up PSWF lookup tables */
 
   pswf_su(pswf,ltbl,M02,wtbl,dwtbl,winv);
@@ -157,7 +152,7 @@ grid::~grid()
 
 
 
-void grid::recon(float** G1,float** G2,float*** S1,float*** S2)
+void grid::recon(float center, float** G1,float** G2,float*** S1,float*** S2)
 
      /************************************************************/
      /* Reconstruct two real slice images from their sinugrams   */
@@ -238,6 +233,13 @@ void grid::recon(float** G1,float** G2,float*** S1,float*** S2)
     float offset=0.;
     complex phfac;
 
+    // If the center has changed need to call filphase_su
+    // This is always done on the first slice, previousCenter is set to -1 to begin
+    if (center != previousCenter) {
+        /*** Set up table of combined filter-phase factors */
+        filphase_su(pdim,center,filter,filphase);
+        previousCenter = center;
+    }          
 
     for(n=0;n<n_ang;n++)     /*** Start loop on angles */
       {
