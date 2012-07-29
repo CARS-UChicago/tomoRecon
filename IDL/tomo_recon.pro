@@ -98,6 +98,7 @@ pro tomo_recon, input, $
                 centerOffset=centerOffset, $
                 centerSlope=centerSlope, $
                 airPixels = airPixels, $
+                ringWidth = ringWidth, $
                 fluorescence = fluorescence, $
                 debug = debug, $
                 sampl=sampl, $
