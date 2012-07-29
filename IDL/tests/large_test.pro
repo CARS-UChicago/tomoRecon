@@ -23,7 +23,7 @@ recon = 0
 print, systime(0), ' large_test: Reading normalized input file in netCDF format'
 vol = read_tomo_volume('L62_4D_pt_13p8E_30mm_w5D_1_.volume', yrange=[0, 256])
 numThreads = 12
-ringWidth = 0
+ringWidth = 21
 print, systime(0), ' large_test: Calling tomo_recon'
 t0 = systime(1)
 tomo_recon, vol, recon, debug=0, airPixels=10, ringWidth=ringWidth, centerOffset=1012, numThreads=numThreads
