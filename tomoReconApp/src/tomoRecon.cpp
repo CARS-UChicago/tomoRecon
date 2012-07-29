@@ -212,11 +212,11 @@ void tomoRecon::workerTask(epicsEventId doneEventId)
   float *pOut;
   int i;
   int sinOffset;
-  float *sin1, *sin2, *air, *recon1, *recon2, *pRecon;
+  float *sin1=0, *sin2=0, *recon1=0, *recon2=0, *pRecon;
   sg_struct sgStruct;
   grid_struct gridStruct;
-  float **S1, **S2, **R1, **R2;
-  grid *pGrid;
+  float **S1=0, **S2=0, **R1=0, **R2=0;
+  grid *pGrid=0;
   static const char *functionName="tomoRecon::workerTask";
   
   sgStruct.n_ang    = numProjections_;
@@ -246,7 +246,6 @@ void tomoRecon::workerTask(epicsEventId doneEventId)
 
   sin1   = (float *) calloc(paddedWidth_ * numProjections_, sizeof(float));
   sin2   = (float *) calloc(paddedWidth_ * numProjections_, sizeof(float));
-  air    = (float *) malloc(paddedWidth_*sizeof(float));
   recon1 = (float *) calloc(reconSize * reconSize, sizeof(float));
   recon2 = (float *) calloc(reconSize * reconSize, sizeof(float));  
   S1     = (float **) malloc(numProjections_ * sizeof(float *));
@@ -279,10 +278,10 @@ void tomoRecon::workerTask(epicsEventId doneEventId)
     }
     epicsTimeGetCurrent(&tStart);
     
-    sinogram(toDoMessage.pIn1, sin1, air);
+    sinogram(toDoMessage.pIn1, sin1);
     doneMessage.numSlices = 1;
     if (toDoMessage.pIn2) {
-      sinogram(toDoMessage.pIn2, sin2, air);
+      sinogram(toDoMessage.pIn2, sin2);
       doneMessage.numSlices = 2;
     }
     epicsTimeGetCurrent(&tStop);
@@ -316,16 +315,15 @@ void tomoRecon::workerTask(epicsEventId doneEventId)
     }
     if (shutDown_) break;
   }
-  free(sin1);
-  free(sin2);
-  free(air);
-  free(recon1);
-  free(recon2);
-  free(S1);
-  free(S2);
-  free(R1);
-  free(R2);
-  delete pGrid;
+  if (sin1) free(sin1);
+  if (sin2) free(sin2);
+  if (recon1) free(recon1);
+  if (recon2) free(recon2);
+  if (S1) free(S1);
+  if (S2) free(S2);
+  if (R1) free(R1);
+  if (R2) free(R2);
+  if (pGrid) delete pGrid;
   // Send an event so the supervisor knows this thread is done
   epicsEventSignal(doneEventId);
   if (debug_ > 0) {
@@ -334,14 +332,23 @@ void tomoRecon::workerTask(epicsEventId doneEventId)
   }
 }
 
-void tomoRecon::sinogram(float *pIn, float *pOut, float *air)
+void tomoRecon::sinogram(float *pIn, float *pOut)
 {
   int i, j;
   int numAir = pTomoParams_->airPixels;
+  int ringWidth = pTomoParams_->ringWidth;
   int sinOffset = (paddedWidth_ - numPixels_)/2;
-  float airLeft, airRight, airSlope, ratio;
+  float *air=0, *averageRow=0, *smoothedRow=0;
+  float airLeft, airRight, airSlope, ratio, outData;
   float *pInData;
   float *pOutData;
+  //static const char *functionName = "tomoRecon::sinogram";
+  
+  if (numAir > 0) air = (float *) malloc(paddedWidth_*sizeof(float));
+  if (ringWidth > 0) {
+     averageRow = (float *) calloc(numPixels_, sizeof(float));
+     smoothedRow = (float *) calloc(numPixels_, sizeof(float));
+  }
   
   for (i=0, pInData=pIn, pOutData=pOut; 
        i<numProjections_;
@@ -356,28 +363,56 @@ void tomoRecon::sinogram(float *pIn, float *pOut, float *air)
       if (airLeft <= 0.) airLeft = 1.;
       if (airRight <= 0.) airRight = 1.;
       airSlope = (airRight - airLeft)/(numPixels_ - 1);
-    }
-    else {
-      // Assume data has been normalized to air=10000
-      airLeft = 1e4;
-      airSlope = 0;
-    }
-    for (j=0; j<numPixels_; j++) {
-       air[j] = airLeft + airSlope*i;
+      for (j=0; j<numPixels_; j++) {
+         air[j] = airLeft + airSlope*i;
+      }
     }
     if (pTomoParams_->fluorescence) {
       for (j=0; j<numPixels_; j++) {
         pOutData[sinOffset + j] = pInData[j];
+        if (ringWidth > 0) averageRow[j] += pInData[j];
       }
     }
     else {
       for (j=0; j<numPixels_; j++) {
-        ratio = pInData[j]/air[j];
+        if (numAir > 0)
+            ratio = pInData[j]/air[j];
+        else
+            ratio = pInData[j];
         if (ratio <= 0.) ratio = 1.;
-        pOutData[sinOffset + j] = -log(ratio);
+        outData = -log(ratio);
+        pOutData[sinOffset + j] = outData;
+        if (ringWidth > 0) averageRow[j] += outData;
       }
     }
   }
+  // Do ring artifact correction if ringWidth > 0
+  if (ringWidth > 0) {
+    // We have now computed the average row of the sinogram
+    // Smooth it
+    for (i=0; i<numPixels_; i++) {
+      averageRow[i] /= numProjections_;
+      smoothedRow[i] = averageRow[i];
+    }
+    for (i=(ringWidth-1)/2; i<numPixels_-(ringWidth+1)/2; i++) {
+      smoothedRow[i] = 0;
+      for (j=0; j<ringWidth; j++) {
+        smoothedRow[i] += averageRow[i+j-ringWidth/2];
+      }
+      smoothedRow[i] /= ringWidth;
+    }
+    // Subtract this difference from each row in sinogram
+    for (i=0, pOutData=pOut; 
+      i<numProjections_;
+      i++, pOutData+=paddedWidth_) {
+      for (j=0; j<numPixels_; j++) {
+        pOutData[sinOffset + j] -= (averageRow[j] - smoothedRow[j]);
+      }
+    }
+  }
+  if (air) free(air);
+  if (averageRow) free(averageRow);
+  if (smoothedRow) free(smoothedRow);
 }
 
 void tomoRecon::logMsg(const char *pFormat, ...)
