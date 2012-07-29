@@ -1,19 +1,22 @@
-- Write to Swiss Light Source, Australian Synchrotron, LBL, 2BM to get their
-  benchmarks for typical sizes:
-  - Break out time for reading and writing compared to reconstruction
-  - Typical sizes, range that they use.
-  - Cost of their reconstruction cluster or computer
-
-- Add ring artifact reduction to sinogram
+- Write again to 2BM, NSLS, SLS, LBL, Jeep, Australia if I don't hear back.
 
 - Make C simple application that reconstructs a .raw dataset with chunking
 
 - Make debug file be a TomoParams parameter
 
-- Allow different center for each slice.  Only re-do if the center has changed.
-
 - Make tomoRecon object able to stay around to process more data with the same parameters
   - abort() aborts the current job
   - Constructor only takes tomoParms
   - compute() takes input and output pointers
+  
+- Speed up preprocessing using either threads or GPU
+
+- Do documentation of IDL functions
+
+- Do documentation of C++ functions
+
+- Write SPIE paper
+
+- Write SPIE talk
+
 
