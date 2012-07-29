@@ -15,7 +15,6 @@ ringWidth = 21
 print, systime(0), ' test_ring_removal: Calling tomo_recon'
 t0 = systime(1)
 tomo_recon, vol, recon, debug=0, airPixels=10, ringWidth=ringWidth, centerOffset=1012, numThreads=numThreads
-help, recon
 print, systime(0), ' test_ring_removal: numTheads = ', numThreads, ' ringWidth = ', ringWidth, ' Elapsed time = ', systime(1) - t0
 
 slice = recon[*,*,0]
