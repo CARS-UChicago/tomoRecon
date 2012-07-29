@@ -70,7 +70,7 @@ public:
   ~tomoRecon();
   virtual void supervisorTask();
   virtual void workerTask(epicsEventId workerDoneEvent);
-  virtual void sinogram(float *pIn, float *pOut, float *air);
+  virtual void sinogram(float *pIn, float *pOut);
   virtual void poll(int *pReconComplete, int *pSlicesRemaining);
   virtual void abort();
   virtual void logMsg(const char *pFormat, ...);
