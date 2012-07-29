@@ -65,7 +65,7 @@ class grid {
 public:
   grid(grid_struct *GP,sg_struct *SGP, long *imgsiz);
   ~grid();
-  void recon(float** G1,float** G2,float*** S1,float*** S2);
+  void recon(float center, float** G1,float** G2,float*** S1,float*** S2);
   void filphase_su(long pd,float fac, float(*pf)(float),complex *A);
   void pswf_su(pswf_struct *pswf,long ltbl, 
                long linv, float* wtbl,float* dwtbl,float* winv);
@@ -90,6 +90,8 @@ private:
   float *dwtbl;
   float *work;
   float *winv;
+  float previousCenter;
+  float (*filter)(float);
   complex *cproj;
   complex *filphase;
   complex **H;
