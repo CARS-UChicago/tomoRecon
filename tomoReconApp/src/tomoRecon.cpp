@@ -90,7 +90,7 @@ tomoRecon::tomoRecon(tomoParams_t *pTomoParams, float *pAngles, float *pInput, f
     if (nextSlice < pTomoParams_->numSlices) {
       toDoMessage.pIn2 = pIn;
       toDoMessage.pOut2 = pOut;
-      toDoMessage.center = pTomoParams_->centerOffset + i*pTomoParams_->centerSlope;
+      toDoMessage.center = pTomoParams_->centerOffset + 2*i*pTomoParams_->centerSlope + (paddedWidth_ - numPixels_)/2;
       pIn += numPixels_;
       pOut += reconSize;
       nextSlice++;
@@ -223,7 +223,7 @@ void tomoRecon::workerTask(epicsEventId doneEventId)
   sgStruct.n_det    = paddedWidth_;
   sgStruct.geom     = pTomoParams_->geom;
   sgStruct.angles   = pAngles_;
-  sgStruct.center   = pTomoParams_->centerOffset + (paddedWidth_ - numPixels_)/2;
+  sgStruct.center   = 0; // This is potentially done per-slice
   get_pswf(pTomoParams_->pswfParam, &gridStruct.pswf);
   gridStruct.sampl     = pTomoParams_->sampl;
   gridStruct.R         = pTomoParams_->R;
@@ -288,7 +288,7 @@ void tomoRecon::workerTask(epicsEventId doneEventId)
     epicsTimeGetCurrent(&tStop);
     doneMessage.sinogramTime = epicsTimeDiffInSeconds(&tStop, &tStart);
     epicsTimeGetCurrent(&tStart);
-    pGrid->recon(S1, S2, &R1, &R2);
+    pGrid->recon(toDoMessage.center, S1, S2, &R1, &R2);
     // Copy to output array, discard padding
     for (i=0, pOut=toDoMessage.pOut1, pRecon=recon1+sinOffset*reconSize; 
          i<imageSize;
