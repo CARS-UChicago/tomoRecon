@@ -108,7 +108,8 @@ pro tomo_recon, input, $
                 Y0=Y0, $
                 ltbl=ltbl, $
                 filter_name=filter_name, $
-                geom=geom
+                geom=geom, $
+                wait=wait
                           
     ; We use a common block just to store info through calls
     common tomo_recon_common, tomo_recon_shareable_library
@@ -135,8 +136,14 @@ pro tomo_recon, input, $
         input = float(input)
     endif
 
-    if (n_elements(numThreads) eq 0) then numThreads=1 
-    if (n_elements(paddedSinogramWidth) eq 0) then paddedSinogramWidth=1024 
+    if (n_elements(numThreads) eq 0) then numThreads=8
+    if (n_elements(paddedSinogramWidth) eq 0) then begin
+        ; Use the next largest power of 2 by default
+        paddedSinogramWidth = 128
+        repeat begin
+            paddedSinogramWidth=paddedSinogramWidth * 2
+        endrep until (paddedSinogramWidth ge numPixels)
+    endif
     if (n_elements(centerOffset) eq 0) then centerOffset = paddedSinogramWidth/2. 
     if (n_elements(centerSlope) eq 0) then centerSlope = 0. 
     if (n_elements(airPixels) eq 0) then airPixels = 10 
@@ -153,6 +160,7 @@ pro tomo_recon, input, $
     if (n_elements(ltbl) eq 0) then ltbl=512
     if (n_elements(filter_name) eq 0) then filter_name="shepp"
     if (n_elements(geom) eq 0) then geom=0
+    if (n_elements(wait) eq 0) then wait=1
 
     tomoParams = {tomo_params}
 
@@ -192,5 +200,12 @@ pro tomo_recon, input, $
                       angles, $
                       input, $
                       output)
+
+   if (wait) then begin
+        repeat begin
+            tomo_recon_poll, reconComplete, slicesRemaining
+            wait, .01
+        endrep until (reconComplete)
+   endif
                       
 end
