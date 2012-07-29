@@ -16,12 +16,7 @@ close, lun
 numThreads = 12
 print, systime(0), ' small_test: Calling tomo_recon'
 t0 = systime(1)
-tomo_recon, vol, recon, debug=0, airPixels=10, centerOffset=347.5, numThreads=numThreads, paddedSinogramWidth=1024
-while (1) do begin
-  tomo_recon_poll, reconComplete, slicesRemaining
-  if (reconComplete) then break
-  wait, 0.01
-endwhile
+tomo_recon, vol, recon, debug=0, airPixels=10, centerOffset=345, numThreads=numThreads
 print, systime(0), ' small_test: numTheads = ', numThreads, ' Elapsed time = ', systime(1) - t0
 
 end
