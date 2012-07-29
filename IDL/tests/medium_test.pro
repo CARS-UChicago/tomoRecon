@@ -19,7 +19,6 @@ numThreads = 8
 print, systime(0), ' medium_test: Calling tomo_recon'
 t0 = systime(1)
 tomo_recon, vol, recon, debug=0, airPixels=10, centerOffset=694, numThreads=numThreads
-help, recon
 print, systime(0), ' medium_test: numTheads = ', numThreads, ' Elapsed time = ', systime(1) - t0
 
 end
