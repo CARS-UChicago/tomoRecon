@@ -11,6 +11,7 @@ pro tomo_params__define
     ringWidth: 0L, $
     fluorescence: 0L, $
     debug: 0L, $
+    debugFile: bytarr(256), $
     ; These are gridRec parameters
     geom: 0L,           $	; 0 if array of angles provided;
 				                  ; 1,2 if uniform in half,full circle
