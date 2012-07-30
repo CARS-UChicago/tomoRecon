@@ -45,6 +45,7 @@ typedef struct {
   int ringWidth;
   int fluorescence;
   int debug;
+  char debugFileName[256];
   // These are gridRec parameters
   int geom;		      /* 0 if array of angles provided;
 				             * 1,2 if uniform in half,full circle */ 
@@ -61,21 +62,20 @@ typedef struct {
 #ifdef __cplusplus
 typedef struct {
   class tomoRecon *pTomoRecon;
-  epicsEventId doneEventId;
+  int taskNum;
 } workerCreateStruct;
 
 class tomoRecon {
 public:
-  tomoRecon(tomoParams_t *pTomoParams, float *pAngles, float *pInput, float *pOutput);
+  tomoRecon(tomoParams_t *pTomoParams, float *pAngles);
   ~tomoRecon();
+  virtual int reconstruct(float *pInput, float *pOutput);
   virtual void supervisorTask();
-  virtual void workerTask(epicsEventId workerDoneEvent);
+  virtual void workerTask(int taskNum);
   virtual void sinogram(float *pIn, float *pOut);
   virtual void poll(int *pReconComplete, int *pSlicesRemaining);
   virtual void abort();
   virtual void logMsg(const char *pFormat, ...);
-  int reconComplete_;
-  int slicesRemaining_;
 
 private:
   tomoParams_t *pTomoParams_;
@@ -90,11 +90,16 @@ private:
   int queueElements_;
   int debug_;
   FILE *debugFile_;
+  int reconComplete_;
+  int slicesRemaining_;
   int shutDown_;
   epicsMessageQueueId toDoQueue_;
   epicsMessageQueueId doneQueue_;
-  epicsEventId *workerDoneEventIds_;
-  epicsMutexId fftwMutexId_;
-  epicsMutexId logMsgMutexId_;
+  epicsEventId supervisorWakeEvent_;
+  epicsEventId supervisorDoneEvent_;
+  epicsEventId *workerWakeEvents_;
+  epicsEventId *workerDoneEvents_;
+  epicsMutexId fftwMutex_;
+  epicsMutexId logMsgMutex_;
 };
 #endif
