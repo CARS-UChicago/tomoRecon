@@ -1,6 +1,6 @@
-pro tomo_recon_abort
+pro tomo_recon_delete
     common tomo_recon_common, tomo_recon_shareable_library
-    t = call_external(tomo_recon_shareable_library, 'tomoReconAbortIDL')
+    t = call_external(tomo_recon_shareable_library, 'tomoReconDeleteIDL')
 end
 
 pro tomo_recon_poll, reconComplete, slicesRemaining
@@ -92,6 +92,7 @@ end
 
 pro tomo_recon, input, $
                 output, $
+                create = create, $
                 angles = angles, $
                 numThreads = numThreads, $
                 paddedSinogramWidth=paddedSinogramWidth, $
@@ -101,6 +102,7 @@ pro tomo_recon, input, $
                 ringWidth = ringWidth, $
                 fluorescence = fluorescence, $
                 debug = debug, $
+                dbgFile = dbgFile, $
                 sampl=sampl, $
                 pswfParam=pswfParam, $
                 R=R, $
@@ -137,6 +139,7 @@ pro tomo_recon, input, $
         input = float(input)
     endif
 
+    if (n_elements(create) eq 0) then create = 1
     if (n_elements(numThreads) eq 0) then numThreads=8
     if (n_elements(paddedSinogramWidth) eq 0) then begin
         ; Use the next largest power of 2 by default
@@ -151,6 +154,7 @@ pro tomo_recon, input, $
     if (n_elements(ringWidth) eq 0) then ringWidth = 9
     if (n_elements(fluorescence) eq 0) then fluorescence = 0
     if (n_elements(debug) eq 0) then debug = 0
+    if (n_elements(dbgFile) eq 0) then dbgFile = ""
     ; *** Set default Gridrec parameters, may want to reset these based on experience **
     if (n_elements(pswfParam)  eq 0) then pswfParam = 6.0
     if (n_elements(sampl) eq 0) then sampl = 1.0
@@ -176,6 +180,7 @@ pro tomo_recon, input, $
     tomoParams.ringWidth = ringWidth
     tomoParams.fluorescence = fluorescence
     tomoParams.debug = debug
+    tomoParams.debugFile = [byte(dbgFile), 0B]
     tomoParams.pswfParam = pswfParam
     tomoParams.sampl = sampl
     tomoParams.R = R
@@ -195,10 +200,14 @@ pro tomo_recon, input, $
         endif
     endif
     if (tomo_recon_shareable_library eq '') then message, 'tomoRecon shareable library not defined'
-    print, systime(0), ' tomo_recon: Calling tomoReconStartIDL C code '
-    t = call_external(tomo_recon_shareable_library, 'tomoReconStartIDL', $
+    if (create) then begin
+        print, systime(0), ' tomo_recon: Calling tomoReconCreateIDL C code '
+        t = call_external(tomo_recon_shareable_library, 'tomoReconCreateIDL', $
                       tomoParams, $
-                      angles, $
+                      angles)
+    endif
+    print, systime(0), ' tomo_recon: Calling tomoReconRunIDL C code '
+    t = call_external(tomo_recon_shareable_library, 'tomoReconRunIDL', $
                       input, $
                       output)
 
