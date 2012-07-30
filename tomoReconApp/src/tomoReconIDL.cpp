@@ -11,20 +11,32 @@
 #include <epicsExport.h>
 
 // We use static variables because IDL does not really handle passing pointers (though it can be faked with LongLong type)
-// and because IDL variable for tomoParams can disappear, it does not have the required lifetime.
+// and because the IDL variable for tomoParams can disappear, it does not have the required lifetime.
 static tomoRecon *pTomoRecon = 0;
 static tomoParams_t tomoParams;
 
 extern "C" {
-epicsShareFunc void epicsShareAPI tomoReconStartIDL(int argc, char *argv[])
+epicsShareFunc void epicsShareAPI tomoReconCreateIDL(int argc, char *argv[])
 {
     // Make a local copy of tomoParams because the IDL variable could be deleted
     memcpy(&tomoParams, (tomoParams_t *)argv[0], sizeof(tomoParams));
     float *pAngles = (float *)argv[1];
-    float *pIn     = (float *)argv[2];
-    float *pOut    = (float *)argv[3];
     if (pTomoRecon) delete pTomoRecon;
-    pTomoRecon = new tomoRecon(&tomoParams, pAngles, pIn, pOut);
+    pTomoRecon = new tomoRecon(&tomoParams, pAngles);
+}
+
+epicsShareFunc void epicsShareAPI tomoReconDeleteIDL(int argc, char *argv[])
+{
+    if (pTomoRecon) delete pTomoRecon;
+}
+
+epicsShareFunc void epicsShareAPI tomoReconRunIDL(int argc, char *argv[])
+{
+    float *pIn     = (float *)argv[0];
+    float *pOut    = (float *)argv[1];
+
+    if (pTomoRecon == 0) return;
+    pTomoRecon->reconstruct(pIn, pOut);
 }
 
 epicsShareFunc void epicsShareAPI tomoReconPollIDL(int argc, char *argv[])
@@ -34,12 +46,6 @@ epicsShareFunc void epicsShareAPI tomoReconPollIDL(int argc, char *argv[])
     
     if (pTomoRecon == 0) return;
     pTomoRecon->poll(pReconComplete, pSlicesRemaining);
-}
-
-epicsShareFunc void epicsShareAPI tomoReconAbortIDL(int argc, char *argv[])
-{
-    if (pTomoRecon == 0) return;
-    pTomoRecon->abort();
 }
 
 } // extern "C"
