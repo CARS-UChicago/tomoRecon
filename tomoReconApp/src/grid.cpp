@@ -39,7 +39,7 @@ grid::grid(grid_struct *GP,sg_struct *SGP, long *imgsiz)
 {
   float C,MaxPixSiz,R,D0,D1;  /* 7/7/98 */
   long itmp;
-
+  
   pswf_struct *pswf;
 
   n_ang=SGP->n_ang;
@@ -162,7 +162,7 @@ void grid::recon(float center, float** G1,float** G2,float*** S1,float*** S2)
 {
 
   if(verbose)printf(
-                    "do_recon(): M0=%ld M= %ld pdim=%ld L=%f scale=%f\n",
+                    "grid::recon(): M0=%ld M= %ld pdim=%ld L=%f scale=%f\n",
                     M0,M,pdim,L,scale);
 
   {        /*** First clear the array H ***/
@@ -333,7 +333,6 @@ void grid::recon(float center, float** G1,float** G2,float*** S1,float*** S2)
         ********************************************************************/
 
     fftwf_execute(backward_2d_plan);  
-    /* Inverse FFT- Numer Recipes */
 
   }  /*** End phase 2 ************************************************/
 
