@@ -21,7 +21,7 @@ function optimize_center, slice, inCenter, step, numCenter, $
       input[0:nx-1,i,  0:nr-1] = float(slice)
    endfor
    
-   tomo_recon, input, recon, centerOffset=center[0], centerSlope=step, _EXTRA = extra
+   tomo_recon, input, recon, center=center, _EXTRA = extra
    ; Use the slice in center of range to get min/max of reconstruction for histogram
    r = recon[*,*,numCenter/2]
    if (n_elements(histMin) eq 0) then begin
