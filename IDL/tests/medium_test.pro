@@ -13,12 +13,12 @@ openr, lun, /get, 'Ag_22_A_.raw'
 vol = intarr(1392, 1040, 900, /nozero)
 readu, lun, vol
 ; Use the following line to only reconstruct the first half of the dataset because of memory limitations
-;vol = vol[*,0:519,*]
+vol = vol[*,0:519,*]
 close, lun
-numThreads = 8
+numThreads = 12
 print, systime(0), ' medium_test: Calling tomo_recon'
 t0 = systime(1)
-tomo_recon, vol, recon, debug=0, airPixels=10, centerOffset=694, numThreads=numThreads
+tomo_recon, vol, recon, debug=0, airPixels=10, center=694, numThreads=numThreads
 print, systime(0), ' medium_test: numTheads = ', numThreads, ' Elapsed time = ', systime(1) - t0
 
 end
