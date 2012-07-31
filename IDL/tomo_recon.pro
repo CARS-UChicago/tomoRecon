@@ -96,8 +96,7 @@ pro tomo_recon, input, $
                 angles = angles, $
                 numThreads = numThreads, $
                 paddedSinogramWidth=paddedSinogramWidth, $
-                centerOffset=centerOffset, $
-                centerSlope=centerSlope, $
+                center=center, $
                 airPixels = airPixels, $
                 ringWidth = ringWidth, $
                 fluorescence = fluorescence, $
@@ -148,8 +147,15 @@ pro tomo_recon, input, $
             paddedSinogramWidth=paddedSinogramWidth * 2
         endrep until (paddedSinogramWidth ge numPixels)
     endif
-    if (n_elements(centerOffset) eq 0) then centerOffset = paddedSinogramWidth/2. 
-    if (n_elements(centerSlope) eq 0) then centerSlope = 0. 
+    if (n_elements(center) eq 0) then begin
+        centerArr = fltarr(numSlices) + (numPixels)/2.
+    endif else if (n_elements(center) eq 1) then begin
+        centerArr = fltarr(numSlices) + float(center)
+    endif else  begin
+        if (n_elements(center) ne numSlices) then $
+            message, 'Center size ='+ string(n_elements(center)) + ' must be '+ string(numSlices)
+        centerArr = float(center)
+    endelse    
     if (n_elements(airPixels) eq 0) then airPixels = 10 
     if (n_elements(ringWidth) eq 0) then ringWidth = 9
     if (n_elements(fluorescence) eq 0) then fluorescence = 0
@@ -171,11 +177,9 @@ pro tomo_recon, input, $
 
     tomoParams.numThreads = numThreads
     tomoParams.numPixels = numPixels
-    tomoParams.numSlices = numSlices
+    tomoParams.maxSlices = numSlices
     tomoParams.numProjections = numProjections
     tomoParams.paddedSinogramWidth = paddedSinogramWidth
-    tomoParams.centerOffset = centerOffset
-    tomoParams.centerSlope = centerSlope
     tomoParams.airPixels = airPixels
     tomoParams.ringWidth = ringWidth
     tomoParams.fluorescence = fluorescence
@@ -208,6 +212,8 @@ pro tomo_recon, input, $
     endif
     print, systime(0), ' tomo_recon: Calling tomoReconRunIDL C code '
     t = call_external(tomo_recon_shareable_library, 'tomoReconRunIDL', $
+                      numSlices, $
+                      centerArr, $
                       input, $
                       output)
 
