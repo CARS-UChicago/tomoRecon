@@ -36,11 +36,9 @@ typedef struct {
 typedef struct {
   int numThreads;
   int numPixels;
-  int numSlices;
+  int maxSlices;
   int numProjections;
   int paddedSinogramWidth;
-  float centerOffset;
-  float centerSlope;
   int airPixels;
   int ringWidth;
   int fluorescence;
@@ -69,7 +67,7 @@ class tomoRecon {
 public:
   tomoRecon(tomoParams_t *pTomoParams, float *pAngles);
   ~tomoRecon();
-  virtual int reconstruct(float *pInput, float *pOutput);
+  virtual int reconstruct(int numSlices, float *center, float *pInput, float *pOutput);
   virtual void supervisorTask();
   virtual void workerTask(int taskNum);
   virtual void sinogram(float *pIn, float *pOut);
@@ -100,6 +98,5 @@ private:
   epicsEventId *workerWakeEvents_;
   epicsEventId *workerDoneEvents_;
   epicsMutexId fftwMutex_;
-  epicsMutexId logMsgMutex_;
 };
 #endif
