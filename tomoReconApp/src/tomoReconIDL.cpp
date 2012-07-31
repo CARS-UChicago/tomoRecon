@@ -27,16 +27,20 @@ epicsShareFunc void epicsShareAPI tomoReconCreateIDL(int argc, char *argv[])
 
 epicsShareFunc void epicsShareAPI tomoReconDeleteIDL(int argc, char *argv[])
 {
-    if (pTomoRecon) delete pTomoRecon;
+    if (pTomoRecon == 0) return;
+    delete pTomoRecon;
+    pTomoRecon = 0;
 }
 
 epicsShareFunc void epicsShareAPI tomoReconRunIDL(int argc, char *argv[])
 {
-    float *pIn     = (float *)argv[0];
-    float *pOut    = (float *)argv[1];
+    int *numSlices =   (int *)argv[0];
+    float *pCenter = (float *)argv[1];
+    float *pIn     = (float *)argv[2];
+    float *pOut    = (float *)argv[3];
 
     if (pTomoRecon == 0) return;
-    pTomoRecon->reconstruct(pIn, pOut);
+    pTomoRecon->reconstruct(*numSlices, pCenter, pIn, pOut);
 }
 
 epicsShareFunc void epicsShareAPI tomoReconPollIDL(int argc, char *argv[])
