@@ -27,6 +27,7 @@ pro tomo_recon_netcdf, input_file, output_file, maxSlices=maxSlices, _REF_EXTRA=
   nextSlice = 0
   v1Exists = 0
   v2Exists = 0
+  create = 1
   
   repeat begin
     if (nextSlice lt numSlices) then begin
@@ -52,7 +53,8 @@ pro tomo_recon_netcdf, input_file, output_file, maxSlices=maxSlices, _REF_EXTRA=
     if (v1Exists) then begin
         ; Reconstruct v1
         print, systime(0), ' tomo_recon_netcdf: starting v1 reconstruction v1Offset = ', v1Offset
-        tomo_recon, v1, r1, _EXTRA=extra
+        tomo_recon, v1, r1, wait=0, create=create, _EXTRA=extra
+        create = 0
     endif
     if (v2Exists) then begin
         print, systime(0), ' tomo_recon_netcdf: writing v2, offset = ', v2Offset
@@ -82,7 +84,8 @@ pro tomo_recon_netcdf, input_file, output_file, maxSlices=maxSlices, _REF_EXTRA=
     if (v2Exists) then begin
         ; Reconstruct v2
         print, systime(0), ' tomo_recon_netcdf: starting v2 reconstruction v2Offset = ', v2Offset
-        tomo_recon, v2, r2, _EXTRA=extra
+        tomo_recon, v2, r2, wait=0, create=create, _EXTRA=extra
+        create = 0
     endif
     if (v1Exists) then begin
         print, systime(0), ' tomo_recon_netcdf: writing v1, offset = ', v1Offset
