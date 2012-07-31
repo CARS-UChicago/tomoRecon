@@ -9,7 +9,7 @@ numThreads=12
 print, systime(0), ' small_test_chunk: calling tomo_recon_netcdf'
 t0 = systime(1)
 tomo_recon_netcdf, 'md_6_30min_A_.volume', 'md_6_30min_A_recon.volume', $
-    maxSlices=500, $
+    maxSlices=260, $
     numThreads=numThreads, $
     debug=1, $
     dbgFile='small_test_chunk_debug.txt', $
