@@ -13,7 +13,7 @@ tomo_recon_netcdf, 'Ag_22_A_.volume', 'Ag_22_A_recon.volume', $
     numThreads=numThreads, $
     debug=0, $
     airPixels=0, $
-    centerOffset=694
+    center=694
     
 print, systime(0), ' medium_chunk: numTheads = ', numThreads, ' Elapsed time = ', systime(1) - t0
 
