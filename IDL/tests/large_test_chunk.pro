@@ -13,7 +13,7 @@ tomo_recon_netcdf, 'L62_4D_pt_13p8E_30mm_w5D_1_.volume', 'L62_4D_pt_13p8E_30mm_w
     numThreads=numThreads, $
     debug=0, $
     airPixels=0, $
-    centerOffset=1012, $
+    center=1014, $
     paddedSinogramWidth=2048
 
 print, systime(0), ' large_test_chunk: numTheads = ', numThreads, ' Elapsed time = ', systime(1) - t0
