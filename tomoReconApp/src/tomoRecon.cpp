@@ -43,12 +43,12 @@ static void workerTask(workerCreateStruct *pWCS)
 tomoRecon::tomoRecon(tomoParams_t *pTomoParams, float *pAngles)
   : pTomoParams_(pTomoParams),
     numPixels_(pTomoParams_->numPixels),
-    numSlices_(pTomoParams_->numSlices),
+    numSlices_(pTomoParams_->maxSlices),
     numProjections_(pTomoParams_->numProjections),
     paddedWidth_(pTomoParams_->paddedSinogramWidth),
     numThreads_(pTomoParams_->numThreads),
     pAngles_(pAngles),
-    queueElements_((pTomoParams_->numSlices+1)/2),
+    queueElements_((numSlices_+1)/2),
     debug_(pTomoParams_->debug),
     reconComplete_(1),
     shutDown_(0)
@@ -74,7 +74,6 @@ tomoRecon::tomoRecon(tomoParams_t *pTomoParams, float *pAngles)
   supervisorWakeEvent_ = epicsEventCreate(epicsEventEmpty);
   supervisorDoneEvent_ = epicsEventCreate(epicsEventEmpty);
   fftwMutex_ = epicsMutexCreate();
-  logMsgMutex_ = epicsMutexCreate();
 
   /* Create the thread for the supervisor task */
   supervisorTaskId = epicsThreadCreate("supervisorTask",
@@ -129,11 +128,10 @@ tomoRecon::~tomoRecon()
   free(workerWakeEvents_);
   free(workerDoneEvents_);
   epicsMutexDestroy(fftwMutex_);
-  epicsMutexDestroy(logMsgMutex_);
   if (debugFile_ != stdout) fclose(debugFile_);
 }
 
-int tomoRecon::reconstruct(float *pInput, float *pOutput)
+int tomoRecon::reconstruct(int numSlices, float *center, float *pInput, float *pOutput)
 {
   float *pIn, *pOut;
   toDoMessage_t toDoMessage;
@@ -145,9 +143,18 @@ int tomoRecon::reconstruct(float *pInput, float *pOutput)
 
   // If a reconstruction is already in progress return an error
   if (debug_) logMsg("%s: entry, reconComplete_=%d", functionName, reconComplete_);
-  if (reconComplete_ == 0) return -1;
+  if (reconComplete_ == 0) {
+    logMsg("%s: error, reconstruction already in progress", functionName);
+    return -1;
+  }
 
-  slicesRemaining_ = pTomoParams_->numSlices,
+  if (numSlices > pTomoParams_->maxSlices) {
+    logMsg("%s: error, numSlices=%d, must be <= %d", functionName, numSlices, pTomoParams_->maxSlices);
+    return -1;
+  }
+  
+  numSlices_ = numSlices;
+  slicesRemaining_ = numSlices_;
   pInput_ = pInput;
   pOutput_ = pOutput;
   pIn = pInput_;
@@ -156,17 +163,17 @@ int tomoRecon::reconstruct(float *pInput, float *pOutput)
   reconComplete_ = 0;
 
   // Fill up the toDoQueue with slices to be reconstructed
-  for (i=0; i<queueElements_; i++) {
+  for (i=0; i<(numSlices_+1)/2; i++) {
     toDoMessage.sliceNumber = nextSlice;
     toDoMessage.pIn1 = pIn;
     toDoMessage.pOut1 = pOut;
     pIn += numPixels_;
     pOut += reconSize;
     nextSlice++;
-    if (nextSlice < pTomoParams_->numSlices) {
+    if (nextSlice < numSlices_) {
       toDoMessage.pIn2 = pIn;
       toDoMessage.pOut2 = pOut;
-      toDoMessage.center = pTomoParams_->centerOffset + 2*i*pTomoParams_->centerSlope + (paddedWidth_ - numPixels_)/2;
+      toDoMessage.center = center[i] + (paddedWidth_ - numPixels_)/2.;
       pIn += numPixels_;
       pOut += reconSize;
       nextSlice++;
@@ -276,7 +283,7 @@ void tomoRecon::workerTask(int taskNum)
   sgStruct.n_det    = paddedWidth_;
   sgStruct.geom     = pTomoParams_->geom;
   sgStruct.angles   = pAngles_;
-  sgStruct.center   = 0; // This is potentially done per-slice
+  sgStruct.center   = 0; // This is done per-slice
   get_pswf(pTomoParams_->pswfParam, &gridStruct.pswf);
   gridStruct.sampl     = pTomoParams_->sampl;
   gridStruct.R         = pTomoParams_->R;
@@ -289,6 +296,7 @@ void tomoRecon::workerTask(int taskNum)
 
   // Must take a mutex when creating grid object, because it creates fftw plans, which is not thread safe
   epicsMutexLock(fftwMutex_);
+  if (debug_) logMsg("%s: %s creating grid object", functionName, epicsThreadGetNameSelf());
   pGrid = new grid(&gridStruct, &sgStruct, &reconSize);
   epicsMutexUnlock(fftwMutex_);
 
@@ -367,6 +375,9 @@ void tomoRecon::workerTask(int taskNum)
         printf("%s, error calling epicsMessageQueueTrySend, status=%d", functionName, status);
       }
       if (debug_ > 0) { 
+logMsg("%s:, thread=%s, slice=%d, pIn=%p, pOut=%p", 
+functionName, epicsThreadGetNameSelf(), doneMessage.sliceNumber, toDoMessage.pIn1, toDoMessage.pOut1); 
+ 
         logMsg("%s:, thread=%s, slice=%d, sinogram time=%f, recon time=%f", 
             functionName, epicsThreadGetNameSelf(), doneMessage.sliceNumber, 
             doneMessage.sinogramTime, doneMessage.reconTime);
@@ -477,24 +488,26 @@ void tomoRecon::sinogram(float *pIn, float *pOut)
 
 void tomoRecon::logMsg(const char *pFormat, ...)
 {
-    va_list     pvar;
-    epicsTimeStamp now;
-    char nowText[40];
+  va_list     pvar;
+  epicsTimeStamp now;
+  char nowText[40];
+  char message[256];
+  char temp[256];
 
-    epicsMutexLock(logMsgMutex_);
-    epicsTimeGetCurrent(&now);
-    nowText[0] = 0;
-    epicsTimeToStrftime(nowText,sizeof(nowText),
-         "%Y/%m/%d %H:%M:%S.%03f",&now);
-    fprintf(debugFile_,"%s ",nowText);
-    va_start(pvar,pFormat);
-    vfprintf(debugFile_, pFormat, pvar);
-    va_end(pvar);
-    if (debugFile_ == stdout)
-        fprintf(debugFile_, "\r\n");
-    else
-        fprintf(debugFile_, "\n");
-    fflush(debugFile_);
-    epicsMutexUnlock(logMsgMutex_);
+  epicsTimeGetCurrent(&now);
+  nowText[0] = 0;
+  epicsTimeToStrftime(nowText,sizeof(nowText),
+      "%Y/%m/%d %H:%M:%S.%03f",&now);
+  sprintf(message,"%s ",nowText);
+  va_start(pvar,pFormat);
+  vsprintf(temp, pFormat, pvar);
+  va_end(pvar);
+  strcat(message, temp);
+  if (debugFile_ == stdout)
+    strcat(message, "\r\n");
+  else
+    strcat(message, "\n");
+  fprintf(debugFile_, message);
+  fflush(debugFile_);
 }
 
