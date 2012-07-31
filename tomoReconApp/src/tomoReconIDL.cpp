@@ -34,6 +34,7 @@ epicsShareFunc void epicsShareAPI tomoReconDeleteIDL(int argc, char *argv[])
     if (pTomoRecon == 0) return;
     delete pTomoRecon;
     if (angles) free(angles);
+    angles = 0;
     pTomoRecon = 0;
 }
 
