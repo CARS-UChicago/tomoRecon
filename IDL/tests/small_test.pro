@@ -13,12 +13,13 @@ openr, lun, /get, 'md_6_30min_A_.raw'
 vol = intarr(696, 520, 720, /nozero)
 readu, lun, vol
 close, lun
+vol = vol/1.e4
 numThreads = 12
 
 ; Reconstruct once creating a new tomoRecon object
 print, systime(0), ' small_test: Calling tomo_recon with create=1'
 t0 = systime(1)
-tomo_recon, vol, recon, debug=0, dbgFile='', airPixels=10, centerOffset=345, numThreads=numThreads, create=1
+tomo_recon, vol, recon, debug=0, dbgFile='', airPixels=10, center=349, numThreads=numThreads, create=1
 print, systime(0), ' small_test: numTheads = ', numThreads, ' Elapsed time = ', systime(1) - t0
 
 ; Reconstruct again using the same tomoRecon object.  Will use the same reconstruction parameters from above
