@@ -14,21 +14,26 @@
 // and because the IDL variable for tomoParams can disappear, it does not have the required lifetime.
 static tomoRecon *pTomoRecon = 0;
 static tomoParams_t tomoParams;
+static float *angles = 0;
 
 extern "C" {
 epicsShareFunc void epicsShareAPI tomoReconCreateIDL(int argc, char *argv[])
 {
-    // Make a local copy of tomoParams because the IDL variable could be deleted
+    // Make a local copy of tomoParams and angles because the IDL variables could be deleted
     memcpy(&tomoParams, (tomoParams_t *)argv[0], sizeof(tomoParams));
     float *pAngles = (float *)argv[1];
+    if (angles) free(angles);
+    angles = (float *)malloc(tomoParams.numProjections*sizeof(float));
+    memcpy(angles, pAngles, tomoParams.numProjections*sizeof(float));
     if (pTomoRecon) delete pTomoRecon;
-    pTomoRecon = new tomoRecon(&tomoParams, pAngles);
+    pTomoRecon = new tomoRecon(&tomoParams, angles);
 }
 
 epicsShareFunc void epicsShareAPI tomoReconDeleteIDL(int argc, char *argv[])
 {
     if (pTomoRecon == 0) return;
     delete pTomoRecon;
+    if (angles) free(angles);
     pTomoRecon = 0;
 }
 
