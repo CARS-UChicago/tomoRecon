@@ -2,11 +2,9 @@ pro tomo_params__define
   t = {tomo_params, $
     numThreads: 0L, $
     numPixels: 0L, $
-    numSlices: 0L, $
+    maxSlices: 0L, $
     numProjections: 0L, $
     paddedSinogramWidth: 0L, $
-    centerOffset: 0., $
-    centerSlope: 0., $
     airPixels: 0L, $
     ringWidth: 0L, $
     fluorescence: 0L, $
