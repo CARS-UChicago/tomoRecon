@@ -10,7 +10,7 @@
 
 #define Cmult(A,B,C) {(A).r=(B).r*(C).r-(B).i*(C).i;\
                       (A).i=(B).r*(C).i+(B).i*(C).r;}
-/** A=B*C for complex A, B, C. A must be distinct, and an lvalue */
+/*** A=B*C for complex A, B, C. A must be distinct, and an lvalue */
 
 #ifdef INTERP
 #define Cnvlvnt(X) (wtbl[(int)X]+(X-(int)X)*dwtbl[(int)X])
@@ -24,10 +24,20 @@ static void trig_su(sg_struct *SG,float **SP,float **CP);
 
 static float legendre(int n,float *coefs, float x);
 
-
-
-/*** Function definitions ***/
-
+/** Constructor for the grid object.
+* Allocates memory that used internally. <br/>
+* Creates lookup tables of sine and cosine functions for efficiency. <br/>
+* Creates the FFTW plans for 1-D and 2-D FFTs.  This operation can require several seconds for
+* large arrays.  This overhead time only occurs the very first time the sinograms of a particular size 
+* are reconstructed by an application because FFTW caches the plans internally. <br>
+* NOTE: Because FFTW plan creation is not thread-safe this constructor is also not thread-safe. If multiple
+* grid objects are being created then their creation must be protected by a mutex so that the constructor
+* is not be called by multiple threads at the same time.  Once the grid object is created then then it is fully
+* thread-safe.
+* \param[in] GP Pointer to a grid_struct structure that defines the grid reconstruction parameters
+* \param[in] SGP Pointer to an sg_struct structure that defines the sinogram parameters
+* \param[out] imgsiz The size of the reconstructed images the grid will produce =float[imgsiz, imgsiz]
+*/
 grid::grid(grid_struct *GP,sg_struct *SGP, long *imgsiz)
 
      /************************************************************/
@@ -57,7 +67,7 @@ grid::grid(grid_struct *GP,sg_struct *SGP, long *imgsiz)
   C=pswf->C;
   verbose = GP->verbose;
 
-  /** Set flag if ROI offset exists **/
+  /*** Set flag if ROI offset exists **/
   if(X0!=0.||Y0!=0.)flag=1;  
   else flag=0;
         
@@ -129,11 +139,12 @@ grid::grid(grid_struct *GP,sg_struct *SGP, long *imgsiz)
 
 }
 
-// Destructor
+/** Destructor for the grid class
+* Releases memory allocated by constructor.<br/>
+* NOTE: Memory allocated with fftwf_malloc must be freed with fftwf_free or crashes will result!
+*/
+
 grid::~grid()
-
-     /***** Release memory allocated by constructor ***/
-
 {
   free(SINE);
   free(COSE);
@@ -151,14 +162,15 @@ grid::~grid()
 
 
 
-
+/** Reconstructs two real slice images from their sinograms.
+* This uses the "gridding" algorithm applied to complex data.
+* \param[in] center The rotation center to be used for these two slices
+* \param[in] G1 Array of pointers to the data for each projection of the first sinogram
+* \param[in] G2 Array of pointers to the data for each projection of the second sinogram
+* \param[out] S1 Array of pointers to pointers to the data for each row of the reconstruction for the first slice
+* \param[out] S2 Array of pointers to pointers to the data for each row of the reconstruction for the second slice
+*/
 void grid::recon(float center, float** G1,float** G2,float*** S1,float*** S2)
-
-     /************************************************************/
-     /* Reconstruct two real slice images from their sinugrams   */
-     /* using the "gridding" algorithm applied to complex data.  */
-     /************************************************************/
-
 {
 
   if(verbose)printf(
@@ -255,7 +267,7 @@ void grid::recon(float center, float** G1,float** G2,float*** S1,float*** S2)
             j++;
           }
 
-        while(j<pdim)        /** Zero fill the rest of array **/
+        while(j<pdim)        /*** Zero fill the rest of array **/
           {
             cproj[j].r=cproj[j].i=0.0;
             j++;
@@ -412,16 +424,15 @@ void grid::recon(float center, float** G1,float** G2,float*** S1,float*** S2)
 
 
 
+
+/** Sets up the complex array, filphase[].
+* Each element of filphase consists of a real filter factor [obtained from the function,
+* (*pf)()], multiplying a complex phase factor (derived from the 
+* parameter, center).
+*/
+/*  See Phase 1 comments in do_recon(), above. */
 void grid::filphase_su(long pd, float center,
                         float(*pf)(float), complex *A)
-
-     /******************************************************************/
-     /* Set up the complex array, filphase[], each element of which    */
-     /* consists of a real filter factor [obtained from the function,  */
-     /* (*pf)()], multiplying a complex phase factor (derived from the */
-     /* parameter, center}.  See Phase 1 comments in do_recon(), above.*/
-     /******************************************************************/
-
 { 
   long j,pd2=pd>>1;
   float x,rtmp1=2*pi*center/pd,rtmp2;
@@ -438,15 +449,11 @@ void grid::filphase_su(long pd, float center,
 
 }  /*** End filphase_su() ***/
 
+/** Set up lookup tables for convolvent (used in Phase 1 of grid::recon()), 
+* and for the final correction factor (used in Phase 3).
+*/
 void grid::pswf_su(pswf_struct *pswf,long ltbl, long linv, 
                    float* wtbl,float* dwtbl,float* winv)
-
-     /*************************************************************/
-     /* Set up lookup tables for convolvent (used in Phase 1 of   */
-     /* do_recon()), and for the final correction factor (used in */
-     /* Phase 3).                                                  */
-     /*************************************************************/
-
 {
   float C,*coefs, lmbda, polyz,norm,fac;
   long i;
@@ -490,10 +497,8 @@ void grid::pswf_su(pswf_struct *pswf,long ltbl, long linv,
 }   /*** End pswf_su() ***/
 
 
+/** Set up tables of sines and cosines. */
 static void trig_su(sg_struct *SG, float **SP, float **CP)
-
-     /*********** Set up tables of sines and cosines. ***********/
-
 {
   int j, geom=SG->geom, n_ang=SG->n_ang;
   float *S,*C;
@@ -536,21 +541,14 @@ static void trig_su(sg_struct *SG, float **SP, float **CP)
       fprintf(stderr,
               "Illegal value for angle geometry indicator.\n");
       exit(2);
-    }  /** End switch **/
+    }  /*** End switch **/
 
 }        /*** End trig_su ***/
 
 
-static 
-float legendre(int n,float *coefs, float x)
-
-     /***************************************************
-*                                                  *
-*    Compute SUM(coefs(k)*P(2*k,x), for k=0,n/2)  *
-*                                                  *
-*    where P(j,x) is the jth Legendre polynomial   *
-*                                                  *
-***************************************************/
+/** Compute SUM(coefs(k)*P(2*k,x), for k=0,n/2) where P(j,x) is the jth Legendre polynomial
+*/
+static float legendre(int n,float *coefs, float x)
 {
   float penult,last,fnew,y;
   int j,k,even;
