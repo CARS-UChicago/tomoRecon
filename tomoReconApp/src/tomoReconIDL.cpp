@@ -17,6 +17,13 @@ static tomoParams_t tomoParams;
 static float *angles = 0;
 
 extern "C" {
+/** Function to create a tomoRecon object from IDL. 
+ * \param[in] argc Number of parameters = 2
+ * \param[in] argv Array of pointers.<br/>
+ *            argv[0] = Pointer to a tomoParams_t structure, which defines the reconstruction parameters <br/>
+ *            argv[1] = Pointer to float array of angles in degrees <br/>
+ * These arguments are copied to static variables in this file, because the IDL variables could be deleted
+ * and returned to the heap while the tomoRecon object still exists. */
 epicsShareFunc void epicsShareAPI tomoReconCreateIDL(int argc, char *argv[])
 {
   tomoParams_t *pTomoParams = (tomoParams_t *)argv[0];
@@ -31,6 +38,9 @@ epicsShareFunc void epicsShareAPI tomoReconCreateIDL(int argc, char *argv[])
   pTomoRecon = new tomoRecon(&tomoParams, angles);
 }
 
+/** Function to delete the tomoRecon object created with tomoReconCreateIDL.
+* Note that any existing tomoRecon object is automatically deleted the next time
+* that tomoReconCreateIDL is called, so it is often not necessary to call this function. */
 epicsShareFunc void epicsShareAPI tomoReconDeleteIDL(int argc, char *argv[])
 {
   if (pTomoRecon == 0) return;
@@ -40,6 +50,14 @@ epicsShareFunc void epicsShareAPI tomoReconDeleteIDL(int argc, char *argv[])
   pTomoRecon = 0;
 }
 
+/** Function to run a reconstruction using the tomoRecon object created with tomoReconCreateIDL.
+ * \param[in] argc Number of parameters = 4
+ * \param[in] argv Array of pointers. <br/>
+ *            argv[0] = Pointer to a number of slices to reconstruct <br/>
+ *            argv[1] = Pointer to float array of rotation centers in pixels <br/>
+ *            argv[2] = Pointer to float array of input slices [numPixels, numSlices, numProjections] <br/>
+ *            argv[3] = Pointer to float array of output reconstructed slices [numPixels, numPixels, numSlices]
+ */
 epicsShareFunc void epicsShareAPI tomoReconRunIDL(int argc, char *argv[])
 {
   int *numSlices =   (int *)argv[0];
@@ -51,6 +69,11 @@ epicsShareFunc void epicsShareAPI tomoReconRunIDL(int argc, char *argv[])
   pTomoRecon->reconstruct(*numSlices, pCenter, pIn, pOut);
 }
 
+/** Function to poll the status of a reconstruction started with tomoReconRunIDL.
+ * \param[in] argc Number of parameters = 2
+ * \param[in] argv Array of pointers. <br/>
+ *            argv[0] = Pointer to int reconComplete; 0 if reconstruction still running, 1 if complete <br/>
+ *            argv[1] = Pointer to int slicesRemaining, which gives the number of slices remaining to be reconstructed. */
 epicsShareFunc void epicsShareAPI tomoReconPollIDL(int argc, char *argv[])
 {
   int *pReconComplete   = (int *)argv[0];

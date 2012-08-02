@@ -36,10 +36,11 @@ static void workerTask(workerCreateStruct *pWCS)
 
 
 /** Constructor for the tomoRecon class.
+* Creates the message queues for passing messages to and from the workerTask threads.
+* Creates the thread that execute the supervisorTask function, 
+* and numThreads threads that execute the workerTask function.
 * \param[in] pTomoParams A structure containing the tomography reconstruction parameters
-* \param[in] pTomoParams Pointer to angles
-* \param[in] pInput Pointer to input data
-* \param[out] pOutput Pointer to output data */
+* \param[in] pAngles Array of projection angles in degrees */
 tomoRecon::tomoRecon(tomoParams_t *pTomoParams, float *pAngles)
   : pTomoParams_(pTomoParams),
     numPixels_(pTomoParams_->numPixels),
@@ -105,14 +106,17 @@ tomoRecon::tomoRecon(tomoParams_t *pTomoParams, float *pAngles)
   } 
 }
 
-/** Destructor for the tomoRecon class. */
+/** Destructor for the tomoRecon class.
+* Calls shutDown() to stop any active reconstruction, which causes workerTasks to exit.
+* Waits for supervisor task to exit, which in turn waits for all workerTasks to exit.
+* Destroys the EPICS message queues, events and mutexes. Closes the debugging file. */
 tomoRecon::~tomoRecon() 
 {
   int i;
   int status;
   static const char *functionName = "tomoRecon:~tomoRecon";
   
-  abort();
+  shutDown();
   status = epicsEventWait(supervisorDoneEvent_);
   if (status) {
     logMsg("%s: error waiting for supervisorDoneEvent=%d", functionName, status);
@@ -131,6 +135,13 @@ tomoRecon::~tomoRecon()
   if (debugFile_ != stdout) fclose(debugFile_);
 }
 
+/** Function to start reconstruction of a set of slices
+* Sends messages to workerTasks to begin the reconstruction and wakes up
+* the supervisorTasks and workerTasks.
+* \param[in] numSlices Number of slices to reconstruct
+* \param[in] center Rotation center to use for each slice
+* \param[in] pInput Pointer to input data [numPixels, numSlices, numProjections]
+* \param[out] pOutput Pointer to output data [numPixels, numPixels, numSlices] */
 int tomoRecon::reconstruct(int numSlices, float *center, float *pInput, float *pOutput)
 {
   float *pIn, *pOut;
@@ -195,14 +206,18 @@ int tomoRecon::reconstruct(int numSlices, float *center, float *pInput, float *p
   return 0;
 }
 
-
-void tomoRecon::poll(int *pReconComplete_, int *pSlicesRemaining_)
+/** Function to poll the status of the reconstruction
+* \param[out] pReconComplete 0 if reconstruction is still in progress, 1 if it is complete
+* \param[out] pSlicesRemaining Number of slices remaining to be reconstructed */
+void tomoRecon::poll(int *pReconComplete, int *pSlicesRemaining)
 {
-  *pReconComplete_ = reconComplete_;
-  *pSlicesRemaining_ = slicesRemaining_;
+  *pReconComplete = reconComplete_;
+  *pSlicesRemaining = slicesRemaining_;
 }
 
-void tomoRecon::abort()
+/** Function to shut down the object
+* Sets the shutDown_ flag and sends an event to wake up the supervisorTask and workerTasks. */
+void tomoRecon::shutDown()
 {
   int i;
   
@@ -213,8 +228,10 @@ void tomoRecon::abort()
   for (i=0; i<numThreads_; i++) epicsEventSignal(workerWakeEvents_[i]);
 }
 
-/** Supervisor control task that runs as a separate thread. */
-void tomoRecon::supervisorTask(void)
+/** Supervisor control task that runs as a separate thread. 
+* Reads messages from the workerTasks to update the status of the reconstruction (reconComplete and slicesRemaining).
+* When shutting down waits for events from workerTasks threads indicating that they have all exited. */
+void tomoRecon::supervisorTask()
 {
   int i;
   int status;
@@ -258,7 +275,10 @@ void tomoRecon::supervisorTask(void)
 }
 
 /** Worker task that runs as a separate thread. Multiple worker tasks can be running simultaneously.
- * Each worker task reconstructs slices that it get from the toDoQueue. */
+ * Each workerTask thread reconstructs slices that it get from the toDoQueue, and sends messages to
+ * the supervisorTask after reconstructing each pair of slices.
+ * \param[in] taskNum Index into arrays of event numbers in the object; 0 to numThreads-1
+ */
 void tomoRecon::workerTask(int taskNum)
 {
   toDoMessage_t toDoMessage;
@@ -375,9 +395,6 @@ void tomoRecon::workerTask(int taskNum)
         printf("%s, error calling epicsMessageQueueTrySend, status=%d", functionName, status);
       }
       if (debug_ > 0) { 
-logMsg("%s:, thread=%s, slice=%d, pIn=%p, pOut=%p", 
-functionName, epicsThreadGetNameSelf(), doneMessage.sliceNumber, toDoMessage.pIn1, toDoMessage.pOut1); 
- 
         logMsg("%s:, thread=%s, slice=%d, sinogram time=%f, recon time=%f", 
             functionName, epicsThreadGetNameSelf(), doneMessage.sliceNumber, 
             doneMessage.sinogramTime, doneMessage.reconTime);
@@ -403,6 +420,13 @@ functionName, epicsThreadGetNameSelf(), doneMessage.sliceNumber, toDoMessage.pIn
   }
 }
 
+/** Function to calculate a sinogram.
+ * Takes log of data (unless fluorescence flag is set.
+ * Optionally does secondary normalization to air in each row of sinogram.
+ * Optionally does ring artifact reduction.
+ * \param[in] pIn Pointer to normalized data input
+ * \param[out] pOut Pointer to sinogram output
+ */
 void tomoRecon::sinogram(float *pIn, float *pOut)
 {
   int i, j;
@@ -486,6 +510,14 @@ void tomoRecon::sinogram(float *pIn, float *pOut)
   if (smoothedRow) free(smoothedRow);
 }
 
+/** Logs messages.
+ * Adds time stamps to each message.
+ * Does buffering to prevent messages from multiple threads getting garbled.
+ * Adds the appropriate terminator for files (LF) and stdout (CR LF, needed for IDL on Linux).
+ * Flushes output after each call, so output appears even if application crashes.
+ * \param[in] pFormat Format string
+ * \param[in] ... Additional arguments for vsprintf
+ */
 void tomoRecon::logMsg(const char *pFormat, ...)
 {
   va_list     pvar;
