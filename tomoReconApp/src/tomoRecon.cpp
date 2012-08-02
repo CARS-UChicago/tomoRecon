@@ -275,9 +275,9 @@ void tomoRecon::supervisorTask()
 }
 
 /** Worker task that runs as a separate thread. Multiple worker tasks can be running simultaneously.
- * Each workerTask thread reconstructs slices that it get from the toDoQueue, and sends messages to
- * the supervisorTask after reconstructing each pair of slices.
- * \param[in] taskNum Index into arrays of event numbers in the object; 0 to numThreads-1
+ * Each workerTask thread reconstructs slices that it gets from the toDoQueue, and sends messages to
+ * the supervisorTask via the doneQueue after reconstructing each pair of slices.
+ * \param[in] taskNum Task number (0 to numThreads-1) for this tread; used to into arrays of event numbers in the object.
  */
 void tomoRecon::workerTask(int taskNum)
 {
@@ -424,8 +424,8 @@ void tomoRecon::workerTask(int taskNum)
  * Takes log of data (unless fluorescence flag is set.
  * Optionally does secondary normalization to air in each row of sinogram.
  * Optionally does ring artifact reduction.
- * \param[in] pIn Pointer to normalized data input
- * \param[out] pOut Pointer to sinogram output
+ * \param[in] pIn Pointer to normalized data input for this slice [numPixels, slice, numProjections]
+ * \param[out] pOut Pointer to sinogram output [paddedSingramWidth, numProjections]
  */
 void tomoRecon::sinogram(float *pIn, float *pOut)
 {
