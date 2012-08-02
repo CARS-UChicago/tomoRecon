@@ -1,22 +1,13 @@
-- Write again to 2BM, NSLS, SLS, LBL, Jeep, Australia if I don't hear back.
-
 - Make C simple application that reconstructs a .raw dataset with chunking
 
-- Make debug file be a TomoParams parameter
+- See if chunk tests produce the same data as non-chunk tests
 
-- Make tomoRecon object able to stay around to process more data with the same parameters
-  - abort() aborts the current job
-  - Constructor only takes tomoParms
-  - compute() takes input and output pointers
-  
+- Optimum center is not consistent depending on initial guess
+
+- See if centers from tomoRecon agree with old software.  If not, why not?
+
 - Speed up preprocessing using either threads or GPU
 
+- Test and report performance problems with writeu on Linux and Windows
+
 - Do documentation of IDL functions
-
-- Do documentation of C++ functions
-
-- Write SPIE paper
-
-- Write SPIE talk
-
-
