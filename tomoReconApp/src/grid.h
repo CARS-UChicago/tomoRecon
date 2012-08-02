@@ -26,41 +26,58 @@
 #define TOLERANCE 0.1	/* For comparing centers of two sinograms */
 #define LTBL_DEF 512	/* Default lookup table length */
 
+/** Structure used to hold complex data as 2 floats in grid */
 typedef struct {
-    float r;
-    float i;
+    float r;  /**< Real part */
+    float i;  /**< Imaginary part */
 } complex;
 
-typedef struct { 	/* Sinogram parameters */
-   int n_ang;	    /* No. angles in sinogram */
-   int n_det;	    /* No. elems (detectors) per angle */
-   int geom;		  /* 0 if array of angles provided;
-				           * 1,2 if uniform in half,full circle */ 
-   float *angles;	/* Ptr to the array of angles, if used */
-   float center;	/* Rotation axis location */
+/** Structure used to define sinograms for grid */
+typedef struct {
+   int n_ang;	    /**< Number of angles in sinogram */
+   int n_det;	    /**< Number of pixels (detectors) per angle */
+   int geom;		  /**< 0 if array of angles provided; 1,2 if uniform in half,full circle */ 
+   float *angles;	/**< Pointer to the array of angles, if used */
+   float center;	/**< Rotation axis location */
 } sg_struct;
 
-typedef struct {    /*Prolate spheroidal wave fcn (PSWF) data */
-   float C;	        /* Parameter for particular 0th order pswf being used*/
-   int nt;          /* Degree of Legendre polynomial expansion */
-   float lmbda; 	  /* Eigenvalue */
-   float coefs[15];	/* Coeffs for Legendre polynomial expansion */
+/** Prolate spheroidal wave function (PSWF) data */
+typedef struct {
+   float C;	        /**< Parameter for particular 0th order pswf being used */
+   int nt;          /**< Degree of Legendre polynomial expansion */
+   float lmbda; 	  /**< Eigenvalue */
+   float coefs[15];	/**< Coefficients for Legendre polynomial expansion */
 } pswf_struct;
 
-typedef struct {           /* Parameters for gridding algorithm */
-   pswf_struct *pswf;	     /* Ptr to data for PSWF being used  */
-   float sampl;	  	       /* "Oversampling" ratio */
-   float MaxPixSiz; 	     /* Max pixel size for reconstruction */
-   float R;		             /* Region of interest (ROI) relative size */
-   float X0;		           /* (X0,Y0)=Offset of ROI from rotation axis, */
-   float Y0;		           /* in units of center-to-edge distance.  */
-   char fname[16];		     /*  Name of filter function   */		
-   float (*filter)(float); /* Ptr to filter function.  */
-   long ltbl;		           /* No. elements in convolvent lookup tables. */
-   int verbose;            /* Debug printing flag */
+/** Parameters for gridding algorithm */
+typedef struct {
+   pswf_struct *pswf;	     /**< Pointer to data for PSWF being used  */
+   float sampl;	  	       /**< "Oversampling" ratio */
+   float MaxPixSiz; 	     /**< Maximum pixel size for reconstruction */
+   float R;		             /**< Region of interest (ROI) relative size */
+   float X0;		           /**< Offset of ROI from rotation axis, in units of center-to-edge distance. */
+   float Y0;		           /**< Offset of ROI from rotation axis, in units of center-to-edge distance. */
+   char fname[16];		     /**< Name of filter function   */		
+   float (*filter)(float); /**< Pointer to filter function */
+   long ltbl;		           /**< Number of elements in convolvent lookup tables. */
+   int verbose;            /**< Debug printing flag */
 } grid_struct;
 
 #ifdef __cplusplus
+
+/** Class to reconstruct parallel beam tomography data using the Gridrec FFT code.
+* This code was originally written by Bob Marr and Graham Campbell from
+* Brookhaven National Laboratory.  Unfortunately they never published a paper
+* on it, so there is no good reference.<br/>
+* The original version was written in C and used static C variables to share information
+* between functions. It was thus not thread safe.  This version is converted to C++, and
+* all variables that are shared between functions are private member data. It is thus thread
+* safe as long as each thread creates its own grid object. <br/>
+* The original version used the Numerical Recipes FFT functions four1 and fourn. I had previously
+* written wrapper routines that maintained the Numerical Recipes API, but used the FFTW 
+* library for faster FFTs.  Those wrapper routines were also not thread-safe, and they copied
+* data, so were somewhat inefficient.  This version of Gridrec has been changed to use the FFTW API
+* directly, it no longer uses the Numerical Recipes API. */
 class grid {  
 public:
   grid(grid_struct *GP,sg_struct *SGP, long *imgsiz);
