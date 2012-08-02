@@ -60,9 +60,11 @@ typedef struct {
 } tomoParams_t;
 
 #ifdef __cplusplus
+
+/** Structure that is used to create a worker task.  This is the structure passed to epicsThreadCreate() */
 typedef struct {
-  class tomoRecon *pTomoRecon;
-  int taskNum;
+  class tomoRecon *pTomoRecon; /**< Pointer to the tomoRecon object */
+  int taskNum;                 /**< Task number that is passed to tomoRecon::workerTask */
 } workerCreateStruct;
 
 /** Class to do tomography reconstruction.
@@ -77,9 +79,7 @@ typedef struct {
 * can be specified on a slice-by-slice basis.  If the reconstruction parameters change (number of X pixels, 
 * number of projections, Gridrec parameters, etc.) then the tomoRecon object must be deleted and a
 * new one created.
-* \param[in] pTomoParams A structure containing the tomography reconstruction parameters
-* \param[in] pAngles Array of projection angles in degrees */
-
+*/
 class tomoRecon {
 public:
   tomoRecon(tomoParams_t *pTomoParams, float *pAngles);
