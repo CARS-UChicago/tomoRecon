@@ -14,16 +14,18 @@ recon = 0
 ;readu, lun, vol
 ; Use the following line to only reconstruct the first half of the dataset because of memory limitations
 ;vol = vol[*,0:1023,*]
-;close, lun
+;free_lun, lun
 
 ; Use the following instead of the lines above to read the .volume file instead of the .raw file.  
 ; This takes less memory because limiting the number of slices is done in the file reading, 
 ; rather than after reading.
 ; It does require the CARS tomography software, which contains "read_tomo_volume"
 print, systime(0), ' large_test: Reading normalized input file in netCDF format'
-vol = read_tomo_volume('L62_4D_pt_13p8E_30mm_w5D_1_.volume', yrange=[0, 256])
-numThreads = 12
-ringWidth = 21
+vol = read_tomo_volume('L62_4D_pt_13p8E_30mm_w5D_1_.volume', yrange=[0,255])
+print, systime(0), ' large_test: Converting vol to float'
+vol = float(vol)
+numThreads = 10
+ringWidth = 9
 print, systime(0), ' large_test: Calling tomo_recon'
 t0 = systime(1)
 tomo_recon, vol, recon, debug=0, airPixels=10, ringWidth=ringWidth, center=1014, numThreads=numThreads
