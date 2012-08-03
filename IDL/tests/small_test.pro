@@ -12,9 +12,9 @@ print, systime(0), ' small_test: Reading normalized input file in raw format'
 openr, lun, /get, 'md_6_30min_A_.raw'
 vol = intarr(696, 520, 720, /nozero)
 readu, lun, vol
-close, lun
+free_lun, lun
 vol = vol/1.e4
-numThreads = 12
+numThreads = 8
 
 ; Reconstruct once creating a new tomoRecon object
 print, systime(0), ' small_test: Calling tomo_recon with create=1'
