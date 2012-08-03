@@ -16,7 +16,7 @@ readu, lun, vol
 ;vol = vol[*,0:519,*]
 free_lun, lun
 print, systime(0), ' medium_test: Converting to float'
-vol = float(vol)
+vol = vol / 1.e4
 numThreads = 8
 print, systime(0), ' medium_test: Calling tomo_recon'
 t0 = systime(1)
