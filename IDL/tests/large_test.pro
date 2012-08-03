@@ -23,7 +23,7 @@ recon = 0
 print, systime(0), ' large_test: Reading normalized input file in netCDF format'
 vol = read_tomo_volume('L62_4D_pt_13p8E_30mm_w5D_1_.volume', yrange=[0,255])
 print, systime(0), ' large_test: Converting vol to float'
-vol = float(vol)
+vol = vol/1.e4
 numThreads = 10
 ringWidth = 9
 print, systime(0), ' large_test: Calling tomo_recon'
