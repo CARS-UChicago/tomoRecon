@@ -184,7 +184,7 @@ int tomoRecon::reconstruct(int numSlices, float *center, float *pInput, float *p
     if (nextSlice < numSlices_) {
       toDoMessage.pIn2 = pIn;
       toDoMessage.pOut2 = pOut;
-      toDoMessage.center = center[i] + (paddedWidth_ - numPixels_)/2.;
+      toDoMessage.center = center[i*2] + (paddedWidth_ - numPixels_)/2.;
       pIn += numPixels_;
       pOut += reconSize;
       nextSlice++;
@@ -395,8 +395,8 @@ void tomoRecon::workerTask(int taskNum)
         printf("%s, error calling epicsMessageQueueTrySend, status=%d", functionName, status);
       }
       if (debug_ > 0) { 
-        logMsg("%s:, thread=%s, slice=%d, sinogram time=%f, recon time=%f", 
-            functionName, epicsThreadGetNameSelf(), doneMessage.sliceNumber, 
+        logMsg("%s:, thread=%s, slice=%d, center=%f, sinogram time=%f, recon time=%f", 
+            functionName, epicsThreadGetNameSelf(), doneMessage.sliceNumber, toDoMessage.center,
             doneMessage.sinogramTime, doneMessage.reconTime);
       }
       if (shutDown_) break;
