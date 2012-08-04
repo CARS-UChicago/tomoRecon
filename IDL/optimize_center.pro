@@ -11,7 +11,7 @@ function optimize_center, slice, inCenter, step, numCenter, $
    ; center is an array of rotation centers
    ; entropy is the entropy at each point
    entropy = dblarr(numCenter)
-   center = inCenter + (findgen(numCenter) - numCenter/2.)*step
+   center = inCenter + (findgen(numCenter) - numCenter/2)*step
    s = size(slice, /dimensions)
    if (n_elements(s) ne 2) then message, 'Must pass a 2-D slice'
    nx = s[0]
