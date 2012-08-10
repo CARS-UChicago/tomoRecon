@@ -83,7 +83,7 @@ typedef struct {
 class tomoRecon {
 public:
   tomoRecon(tomoParams_t *pTomoParams, float *pAngles);
-  ~tomoRecon();
+  virtual ~tomoRecon();
   virtual int reconstruct(int numSlices, float *center, float *pInput, float *pOutput);
   virtual void supervisorTask();
   virtual void workerTask(int taskNum);
