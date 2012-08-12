@@ -24,6 +24,7 @@ tomoRecon_SRCS += tomoReconIDL.cpp
 
 tomoRecon_LIBS_WIN32 += libfftw3f-3
 tomoRecon_SYS_LIBS_Linux += fftw3f
+tomoRecon_SYS_LIBS_Darwin += fftw3f
 tomoRecon_LIBS += Com
 
 #=============================
