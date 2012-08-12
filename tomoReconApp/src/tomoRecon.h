@@ -48,15 +48,15 @@ typedef struct {
   int debug;                /**< Debug output level; 0: only error messages, 1: debugging from tomoRecon, 2: debugging also from grid */
   char debugFileName[256];  /**< Name of file for debugging output;  use 0 length string ("") to send output to stdout */
   // These are gridRec parameters
-  int geom;		              /**< 0 if array of angles provided; 1,2 if uniform in half, full circle */ 
-  float pswfParam;	        /**< PSWF parameter */
-  float sampl;	  	        /**< "Oversampling" ratio */
-  float MaxPixSiz; 	        /**< Max pixel size for reconstruction */
-  float R;		              /**< Region of interest (ROI) relative size */
-  float X0;		              /**< Offset of ROI from rotation axis in units of center-to-edge distance */
-  float Y0;		              /**< Offset of ROI from rotation axis in units of center-to-edge distance */
-  char fname[16];	          /**< Name of filter function */		
-  int ltbl;		              /**< Number of elements in convolvent lookup tables */
+  int geom;                 /**< 0 if array of angles provided; 1,2 if uniform in half, full circle */ 
+  float pswfParam;          /**< PSWF parameter */
+  float sampl;              /**< "Oversampling" ratio */
+  float MaxPixSiz;          /**< Max pixel size for reconstruction */
+  float R;                  /**< Region of interest (ROI) relative size */
+  float X0;                 /**< Offset of ROI from rotation axis in units of center-to-edge distance */
+  float Y0;                 /**< Offset of ROI from rotation axis in units of center-to-edge distance */
+  char fname[16];           /**< Name of filter function */
+  int ltbl;                 /**< Number of elements in convolvent lookup tables */
 } tomoParams_t;
 
 #ifdef __cplusplus
