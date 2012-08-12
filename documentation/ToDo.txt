@@ -2,12 +2,8 @@
 
 - See if chunk tests produce the same data as non-chunk tests
 
-- Optimum center is not consistent depending on initial guess
-
-- See if centers from tomoRecon agree with old software.  If not, why not?
+- Centers from tomoRecon disagree with old software.  Why?
 
 - Speed up preprocessing using either threads or GPU
 
 - Test and report performance problems with writeu on Linux and Windows
-
-- Do documentation of IDL functions
