@@ -4,12 +4,12 @@
 ; For example SET TOMO_RECON_SHARE=J:\epics\devel\tomoRecon\bin\windows-x64\tomoRecon.dll
 ; You must set your default directory to the location with the data files
 
-numThreads=12
+numThreads=7
 
 print, systime(0), ' large_test_chunk: calling tomo_recon_netcdf'
 t0 = systime(1)
 tomo_recon_netcdf, 'L62_4D_pt_13p8E_30mm_w5D_1_.volume', 'L62_4D_pt_13p8E_30mm_w5D_1_recon.volume', $
-    maxSlices=171, $
+    maxSlices=128, $
     numThreads=numThreads, $
     debug=0, $
     airPixels=0, $
