@@ -21,10 +21,12 @@ recon = 0
 ; rather than after reading.
 ; It does require the CARS tomography software, which contains "read_tomo_volume"
 print, systime(0), ' large_test: Reading normalized input file in netCDF format'
-vol = read_tomo_volume('L62_4D_pt_13p8E_30mm_w5D_1_.volume', yrange=[0,255])
+vol = read_tomo_volume('L62_4D_pt_13p8E_30mm_w5D_1_.volume')
 print, systime(0), ' large_test: Converting vol to float'
+t0 = systime(1)
 vol = vol/1.e4
-numThreads = 10
+print, systime(0), ' large_test: time to convert to float and divide by 10000=', systime(1)-t0
+numThreads = 8
 ringWidth = 9
 print, systime(0), ' large_test: Calling tomo_recon'
 t0 = systime(1)
