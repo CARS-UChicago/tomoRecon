@@ -4,7 +4,7 @@
 ; For example SET TOMO_RECON_SHARE=J:\epics\devel\tomoRecon\bin\windows-x64\tomoRecon.dll
 ; You must set your default directory to the location with the data files
 
-numThreads=12
+numThreads=6
 
 print, systime(0), ' medium_test_chunk: calling tomo_recon_netcdf'
 t0 = systime(1)
