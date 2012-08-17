@@ -10,16 +10,17 @@
     tomoRecon</h1>
   <h2 style="text-align: center">
     Mark Rivers</h2>
-  <h2 style="text-align: center"> 
+  <h2 style="text-align: center">
     University of Chicago</h2>
   <p>
-    This page is the home of tomoRecon, which is software for performing parallel beam tomography reconstruction
-    using multiple threads.  It uses the <a href="http://www.aps.anl.gov/epics">EPICS libCom</a> library
-    for operating system independent support for threads, mutexes, message queues, etc.  It uses a C++ version
-    of the Gridrec software for the actual reconstruction. The library is provided in both source code form, and
-    as 64-bit shareable libraries for Windows, Linux, and Mac OSX.  The shareable libraries can be called from C++, IDL,
-    or other languages.</p>
-    <p>
+    This page is the home of tomoRecon, which is software for performing parallel beam
+    tomography reconstruction using multiple threads. It uses the <a href="http://www.aps.anl.gov/epics">
+      EPICS libCom</a> library for operating system independent support for threads,
+    mutexes, message queues, etc. It uses a C++ version of the Gridrec software for
+    the actual reconstruction. The library is provided in both source code form, and
+    as 64-bit shareable libraries for Windows, Linux, and Mac OSX. The shareable libraries
+    can be called from C++, IDL, or other languages.</p>
+  <p>
     Please email any comments and bug reports to <a href="mailto:%20rivers@cars.uchicago.edu">
       Mark Rivers</a> who is responsible for coordinating development and releases.</p>
   <h2>
@@ -50,9 +51,11 @@
         <td>
           12-August-2012</td>
         <td>
-          <a href="http://cars.uchicago.edu/software/pub/tomoReconR1-0.tgz">tomoReconR1-0.tgz</a></td>
+          <a href="http://cars.uchicago.edu/software/pub/tomoReconR1-0.tgz">tomoReconR1-0.tgz</a>
+        </td>
         <td>
-          <a href="http://cars.uchicago.edu/software/pub/tomoRecon_Prebuilt_R1-0.tgz">tomoRecon_Prebuilt_R1-0.tgz</a></td>
+          <a href="http://cars.uchicago.edu/software/pub/tomoRecon_Prebuilt_R1-0.tgz">tomoRecon_Prebuilt_R1-0.tgz</a>
+        </td>
         <td>
           <a href="tomoReconDoc.html">tomoReconDoc</a></td>
         <td>
@@ -63,8 +66,8 @@
   <h2>
     Installation and Building</h2>
   <p>
-    If using the source code distribution, it must be installed and built for use
-    at your site. These steps only need to be performed once for the site (unless versions
+    If using the source code distribution, it must be installed and built for use at
+    your site. These steps only need to be performed once for the site (unless versions
     of the module running under different releases of EPICS and/or the other required
     modules are needed).</p>
   <ol>
@@ -86,22 +89,25 @@ tar xvf tomoReconRX-Y.tar
       of EPICS base.</li>
     <li>Run <tt>gnumake</tt> in the top level directory and check for any compilation
       errors.</li>
- </ol>
- <p>IDL can be used as the "front-end" to tomoRecon, with IDL reading and writing the files and displaying images.
- The <a href="http://cars.uchicago.edu/software/IDL/tomography.html">GSECARS IDL tomography software</a> contains
- a file called tomo_recon.pro that calls the tomoRecon shareable library.  
- The <a href="http://cars.uchicago.edu/software/IDL/tomography_routines.html#TOMO_RECON">documentation for tomo_recon</a>
- explains how to use these IDL routines.</p>
- <p>To use tomoRecon from IDL with tomo_recon.pro, the shareable library needs to be found.  This can be done in two different
- ways.</p>
- <ol>
-   <li>Define the environment variable TOMO_RECON_SHARE to point to the shareable library.  For example on the
-     Linux bash shell "export TOMO_RECON_SHARE=/usr/local/lib/libtomoRecon.so".  On Windows this might be
-     "set TOMO_RECON_SHARE=C:\tomoRecon\tomoRecon.dll".</li>
-   <li>If the environment variables does not exist, then it looks for the shareable library in the IDL "path", and the
-     shareable library must be named: 'tomoRecon_' + !version.os + '_' + !version.arch + '.so' or '.dll'
-     For example, tomoRecon_Win32_x86_64.dll or tomoRecon_linux_x86_64.so.  This can be done either by renaming the 
-     shareable library or by using soft-links to the actual shareable library file.</li>
+  </ol>
+  <p>
+    IDL can be used as the "front-end" to tomoRecon, with IDL reading and writing the
+    files and displaying images. The <a href="http://cars.uchicago.edu/software/IDL/tomography.html">
+      GSECARS IDL tomography software</a> contains a file called tomo_recon.pro that
+    calls the tomoRecon shareable library. The <a href="http://cars.uchicago.edu/software/IDL/tomography_routines.html#TOMO_RECON">
+      documentation for tomo_recon</a> explains how to use these IDL routines.</p>
+  <p>
+    To use tomoRecon from IDL with tomo_recon.pro, the shareable library needs to be
+    found. This can be done in two different ways.</p>
+  <ol>
+    <li>Define the environment variable TOMO_RECON_SHARE to point to the shareable library.
+      For example on the Linux bash shell "export TOMO_RECON_SHARE=/usr/local/lib/libtomoRecon.so".
+      On Windows this might be "set TOMO_RECON_SHARE=C:\tomoRecon\tomoRecon.dll".</li>
+    <li>If the environment variables does not exist, then it looks for the shareable library
+      in the IDL "path", and the shareable library must be named: 'tomoRecon_' + !version.os
+      + '_' + !version.arch + '.so' or '.dll' For example, tomoRecon_Win32_x86_64.dll
+      or tomoRecon_linux_x86_64.so. This can be done either by renaming the shareable
+      library or by using soft-links to the actual shareable library file.</li>
   </ol>
 </body>
 </html>
