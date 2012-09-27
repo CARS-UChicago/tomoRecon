@@ -9,6 +9,25 @@
   <h1 style="text-align: center">
     tomoRecon Release Notes</h1>
   <h2 style="text-align: center">
+    Release 1-1 (September XXX, 2012)</h2>
+  <ul>
+    <li>Improvements to the Linux pre-built version
+      <ul>
+        <li>Changed the Makefile so it links with the static version of the libCom library.
+          This means that libtomoRecon.so no longer depends on libCom.so. Previously libCom.so
+          needed to be available at run-time.</li>
+        <li>Changed the Makefile so it links with the static version of the libfftw3f library.
+          This means that libtomorecon.so no longer depends on libfftw3f.so. Previously libfftw3f.so
+          needed to be available at run-time.</li>
+        <li>Added 2 new architectures, linux-x86-gcc43 and linux-x86_64-gcc42. The linux-x86_64
+          architecture is built using gcc 4.6.3. It will not run on systems with older versions
+          of gcc because of incompatible changes to the GCC and C run-time libraries. linux-x86-gcc43
+          was built with gcc 4.3.0, and linux-x86_64-gcc42 was built with gcc 4.2.1. These
+          builds will run on older Linux systems.</li>
+      </ul>
+    </li>
+  </ul>
+  <h2 style="text-align: center">
     Release 1-0 (August 17, 2012)</h2>
   <ul>
     <li>First release.</li>
