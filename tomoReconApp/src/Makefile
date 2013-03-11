@@ -31,7 +31,10 @@ tomoRecon_SRCS += grid.cpp pswf.c filters.c
 tomoRecon_SRCS += tomoReconIDL.cpp
 
 tomoRecon_LIBS_WIN32 += libfftw3f-3
+# To use the version of fftw3f included with tomoRecon use this line
 tomoRecon_LIBS_Linux += fftw3f
+# To use the system version of fftw3f use this line
+#tomoRecon_SYS_LIBS_Linux += fftw3f
 tomoRecon_SYS_LIBS_Darwin += fftw3f
 tomoRecon_LIBS += Com
 
