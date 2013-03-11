@@ -19,7 +19,7 @@
     mutexes, message queues, etc. It uses a C++ version of the Gridrec software for
     the actual reconstruction. The library is provided in both source code form, and
     as 64-bit shareable libraries for Windows, Linux, and Mac OSX. The shareable libraries
-    can be called from C++, IDL, or other languages.</p>
+    can be called from C++, IDL, GDL, or other languages.</p>
   <p>
     Please email any comments and bug reports to <a href="mailto:%20rivers@cars.uchicago.edu">
       Mark Rivers</a> who is responsible for coordinating development and releases.</p>
@@ -44,6 +44,22 @@
           Documentation</th>
         <th>
           Release Notes</th>
+      </tr>
+      <tr>
+        <td>
+          1-2</td>
+        <td>
+          11-March-2013</td>
+        <td>
+          <a href="http://cars.uchicago.edu/software/pub/tomoReconR1-2.tgz">tomoReconR1-2.tgz</a>
+        </td>
+        <td>
+          <a href="http://cars.uchicago.edu/software/pub/tomoRecon_Prebuilt_R1-2.tgz">tomoRecon_Prebuilt_R1-2.tgz</a>
+        </td>
+        <td>
+          <a href="tomoReconDoc.html">tomoReconDoc</a></td>
+        <td>
+          <a href="tomoReconReleaseNotes.html">Release notes</a></td>
       </tr>
       <tr>
         <td>
@@ -107,14 +123,15 @@ tar xvf tomoReconRX-Y.tar
       errors.</li>
   </ol>
   <p>
-    IDL can be used as the "front-end" to tomoRecon, with IDL reading and writing the
-    files and displaying images. The <a href="http://cars.uchicago.edu/software/IDL/tomography.html">
+    IDL and GDL can be used as the "front-end" to tomoRecon, with IDL or GDL reading
+    and writing the files and displaying images. The <a href="http://cars.uchicago.edu/software/IDL/tomography.html">
       GSECARS IDL tomography software</a> contains a file called tomo_recon.pro that
     calls the tomoRecon shareable library. The <a href="http://cars.uchicago.edu/software/IDL/tomography_routines.html#TOMO_RECON">
-      documentation for tomo_recon</a> explains how to use these IDL routines.</p>
+      documentation for tomo_recon</a> explains how to use these IDL routines. The tomo_recon
+    routines are also included in this tomoRecon package.</p>
   <p>
-    To use tomoRecon from IDL with tomo_recon.pro, the shareable library needs to be
-    found. This can be done in two different ways.</p>
+    To use tomoRecon from IDL or GDL with tomo_recon.pro, the shareable library needs
+    to be found. This can be done in two different ways.</p>
   <ol>
     <li>Define the environment variable TOMO_RECON_SHARE to point to the shareable library.
       For example on the Linux bash shell "export TOMO_RECON_SHARE=/usr/local/lib/libtomoRecon.so".
