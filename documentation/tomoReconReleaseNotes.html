@@ -9,6 +9,20 @@
   <h1 style="text-align: center">
     tomoRecon Release Notes</h1>
   <h2 style="text-align: center">
+    Release 1-2 (March 11, 2013)</h2>
+  <ul>
+    <li>Added libfftw3f.a in tomoReconApp/src/os/linux-x86 and linux-x86_64 to the SVN
+      repository and source code distribution. Previous source-code releases were missing
+      these files, so it would not build.</li>
+    <li>Modified tomoReconApp/src/Makefile to show how to build with the system version
+      of libfftw3f if that is desired.</li>
+    <li>Minor change to IDL/tomo_recon.pro so that it will compile with GDL (GNU Data
+      Language) as well as IDL.</li>
+    <li>Tested the IDL/tests programs with GDL, and they work, including the netCDF and
+      call_external code. This is good news, since it means that an IDL license is not
+      needed to use the tomo_recon.pro front-end to tomoRecon.</li>
+  </ul>
+  <h2 style="text-align: center">
     Release 1-1 (March 7, 2013)</h2>
   <ul>
     <li>Improvements to the Linux pre-built version
