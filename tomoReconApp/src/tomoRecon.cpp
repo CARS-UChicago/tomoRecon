@@ -67,6 +67,8 @@ tomoRecon::tomoRecon(tomoParams_t *pTomoParams, float *pAngles)
   if ((debugFileName) && (strlen(debugFileName) > 0)) {
     debugFile_ = fopen(debugFileName, "w");
   }
+  
+  if (debug_) logMsg("%s: entry, creating message queues, events, threads, etc.", functionName);
  
   toDoQueue_ = epicsMessageQueueCreate(queueElements_, sizeof(toDoMessage_t));
   doneQueue_ = epicsMessageQueueCreate(queueElements_, sizeof(doneMessage_t));
@@ -116,6 +118,7 @@ tomoRecon::~tomoRecon()
   int status;
   static const char *functionName = "tomoRecon:~tomoRecon";
   
+  if (debug_) logMsg("%s: entry, shutting down and cleaning up", functionName);
   shutDown();
   status = epicsEventWait(supervisorDoneEvent_);
   if (status) {
@@ -178,13 +181,13 @@ int tomoRecon::reconstruct(int numSlices, float *center, float *pInput, float *p
     toDoMessage.sliceNumber = nextSlice;
     toDoMessage.pIn1 = pIn;
     toDoMessage.pOut1 = pOut;
+    toDoMessage.center = center[i*2] + (paddedWidth_ - numPixels_)/2.;
     pIn += numPixels_;
     pOut += reconSize;
     nextSlice++;
     if (nextSlice < numSlices_) {
       toDoMessage.pIn2 = pIn;
       toDoMessage.pOut2 = pOut;
-      toDoMessage.center = center[i*2] + (paddedWidth_ - numPixels_)/2.;
       pIn += numPixels_;
       pOut += reconSize;
       nextSlice++;
@@ -301,6 +304,8 @@ void tomoRecon::workerTask(int taskNum)
   
   sgStruct.n_ang    = numProjections_;
   sgStruct.n_det    = paddedWidth_;
+  // Force n_det to be odd
+  if (paddedWidth_/2 != 0) sgStruct.n_det--;
   sgStruct.geom     = pTomoParams_->geom;
   sgStruct.angles   = pAngles_;
   sgStruct.center   = 0; // This is done per-slice
