@@ -288,6 +288,8 @@ void grid::recon(float center, float** G1,float** G2,float*** S1,float*** S2)
             j++;
           }
 
+        fftwf_execute(backward_1d_plan);   
+ 
         for(j=1;j<pdim2;j++)
           {          /* Start loop on transform data */                        
 
@@ -357,7 +359,7 @@ void grid::recon(float center, float** G1,float** G2,float*** S1,float*** S2)
 
         ********************************************************************/
 
-    fftwf_execute(backward_2d_plan);  
+    fftwf_execute(forward_2d_plan);  
 
   }  /*** End phase 2 ************************************************/
 
