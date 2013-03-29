@@ -321,7 +321,8 @@ void tomoRecon::workerTask(int taskNum)
 
   // Must take a mutex when creating grid object, because it creates fftw plans, which is not thread safe
   epicsMutexLock(fftwMutex_);
-  if (debug_) logMsg("%s: %s creating grid object", functionName, epicsThreadGetNameSelf());
+  if (debug_) logMsg("%s: %s creating grid object, filter=%s", 
+                     functionName, epicsThreadGetNameSelf(), pTomoParams_->fname);
   pGrid = new grid(&gridStruct, &sgStruct, &reconSize);
   epicsMutexUnlock(fftwMutex_);
 
@@ -434,7 +435,7 @@ void tomoRecon::workerTask(int taskNum)
  */
 void tomoRecon::sinogram(float *pIn, float *pOut)
 {
-  int i, j;
+  int i, j, k;
   int numAir = pTomoParams_->airPixels;
   int ringWidth = pTomoParams_->ringWidth;
   int sinOffset = (paddedWidth_ - numPixels_)/2;
@@ -464,7 +465,7 @@ void tomoRecon::sinogram(float *pIn, float *pOut)
       if (airRight <= 0.) airRight = 1.;
       airSlope = (airRight - airLeft)/(numPixels_ - 1);
       for (j=0; j<numPixels_; j++) {
-         air[j] = airLeft + airSlope*i;
+         air[j] = airLeft + airSlope*j;
       }
     }
     if (pTomoParams_->fluorescence) {
@@ -478,7 +479,7 @@ void tomoRecon::sinogram(float *pIn, float *pOut)
         if (numAir > 0)
             ratio = pInData[j]/air[j];
         else
-            ratio = pInData[j];
+            ratio = pInData[j]/10000.;
         if (ratio <= 0.) ratio = 1.;
         outData = -log(ratio);
         pOutData[sinOffset + j] = outData;
@@ -492,12 +493,14 @@ void tomoRecon::sinogram(float *pIn, float *pOut)
     // Smooth it
     for (i=0; i<numPixels_; i++) {
       averageRow[i] /= numProjections_;
-      smoothedRow[i] = averageRow[i];
     }
-    for (i=(ringWidth-1)/2; i<numPixels_-(ringWidth+1)/2; i++) {
+    for (i=0; i<numPixels_; i++) {
       smoothedRow[i] = 0;
       for (j=0; j<ringWidth; j++) {
-        smoothedRow[i] += averageRow[i+j-ringWidth/2];
+        k = i+j-ringWidth/2;
+        if (k < 0) k = 0;
+        if (k > numPixels_ - 1) k = numPixels_ -1;
+        smoothedRow[i] += averageRow[k];
       }
       smoothedRow[i] /= ringWidth;
     }
