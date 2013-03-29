@@ -149,8 +149,8 @@ grid::grid(grid_struct *GP,sg_struct *SGP, long *imgsiz)
 
   *imgsiz=M0;
   
-  forward_1d_plan = fftwf_plan_dft_1d(pdim, (fftwf_complex *)cproj, (fftwf_complex *)cproj, FFTW_FORWARD, FFTW_MEASURE);
-  backward_2d_plan = fftwf_plan_dft_2d(M, M, HData, HData, FFTW_BACKWARD, FFTW_MEASURE);
+  backward_1d_plan = fftwf_plan_dft_1d(pdim, (fftwf_complex *)cproj, (fftwf_complex *)cproj, FFTW_BACKWARD, FFTW_MEASURE);
+  forward_2d_plan = fftwf_plan_dft_2d(M, M, HData, HData, FFTW_FORWARD, FFTW_MEASURE);
 
 }
 
@@ -189,8 +189,8 @@ void grid::recon(float center, float** G1,float** G2,float*** S1,float*** S2)
 {
 
   if(verbose)printf(
-                    "grid::recon(): M0=%ld M= %ld pdim=%ld L=%f scale=%f\n",
-                    M0,M,pdim,L,scale);
+                    "grid::recon(): center=%f, M0=%ld M= %ld pdim=%ld L=%f scale=%f\n",
+                    center, M0,M,pdim,L,scale);
 
   {        /*** First clear the array H ***/
     long iu,iv;
@@ -287,8 +287,6 @@ void grid::recon(float center, float** G1,float** G2,float*** S1,float*** S2)
             cproj[j].r=cproj[j].i=0.0;
             j++;
           }
-
-        fftwf_execute(forward_1d_plan);   
 
         for(j=1;j<pdim2;j++)
           {          /* Start loop on transform data */                        
@@ -454,6 +452,7 @@ void grid::filphase_su(long pd, float center,
   float norm=pi/pd/n_ang;        /* Normalization factor for
                                    back transform  7/7/98  */
 
+  if (verbose) printf("filphase_su, pd=%ld, center=%f, pf=%p\n", pd, center, pf);
   for(j=0;j<pd2;j++)
     {
       x=j*rtmp1;
