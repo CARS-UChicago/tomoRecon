@@ -114,8 +114,8 @@ private:
   complex **H;
   fftwf_complex *HData;
   
-  fftwf_plan forward_1d_plan;
-  fftwf_plan backward_2d_plan;
+  fftwf_plan backward_1d_plan;
+  fftwf_plan forward_2d_plan;
   int verbose;   /* Debug printing flag */
 };
 #endif
