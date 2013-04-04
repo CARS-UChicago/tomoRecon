@@ -7,7 +7,9 @@ include $(TOP)/configure/CONFIG
 SHARED_LIBRARIES = YES
 STATIC_BUILD = YES
 LIBRARY_HOST += tomoRecon
-tomoRecon_LDFLAGS += $(STATIC_LDFLAGS)
+tomoRecon_LDFLAGS_Linux += $(STATIC_LDFLAGS)
+
+INC += fftw3.h
 
 # Note, the following files were manually copied from the fftw Windows distribution directories
 ifeq (win32-x86, $(findstring win32-x86, $(T_A)))
