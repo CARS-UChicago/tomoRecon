@@ -35,28 +35,55 @@ typedef struct {
   double reconTime;     /**< Time required to reconstruct */
 } doneMessage_t;
 
-/** Structure that is passed to the constructor to define the reconstruction */
+/** Structure that is passed to the constructor to define the reconstruction 
+    NOTE: This structure must match the structure defined in IDL in tomo_params__define.pro! 
+    There are fields in this structure that are not used by tomoRecon, but are present because
+    they are used by other reconstruction methods */
 typedef struct {
-  int numThreads;           /**< Number of workerTask threads to create */
   int numPixels;            /**< Number of horizontal pixels in the input data */
-  int maxSlices;            /**< Maximum number of slices that will be passed to tomoRecon::reconstruct */
   int numProjections;       /**< Number of projection angles in the input data */
+  int numSlices;            /**< Maximum number of slices that will be passed to tomoRecon::reconstruct */
+  float sinoScale;          /**< Scale factor to multiply sinogram when airPixels=0 */
+  float reconScale;         /**< Scale factor to multiple reconstruction */
   int paddedSinogramWidth;  /**< Number of pixels to pad the sinogram to;  must be power of 2 and >= numPixels */
   int airPixels;            /**< Number of pixels of air on each side of sinogram to use for secondary normalization */
   int ringWidth;            /**< Number of pixels in smoothing kernel when doing ring artifact reduction; 0 disables ring artifact reduction */
   int fluorescence;         /**< Set to 1 if the data are fluorescence data and should not have the log taken when computing sinogram */
+
+  int reconMethod;          /**< 0=tomoRecon, 1=Gridrec, 2=Backproject */
+  int reconMethodTomoRecon;
+  int reconMethodGridrec;
+  int reconMethodBackproject;
+  
+  int numThreads;           /**< Number of workerTask threads to create */
+  int slicesPerChunk;       /**< Number of slices to reconstruct per chunk */
   int debug;                /**< Debug output level; 0: only error messages, 1: debugging from tomoRecon, 2: debugging also from grid */
   char debugFileName[256];  /**< Name of file for debugging output;  use 0 length string ("") to send output to stdout */
+
   // These are gridRec parameters
   int geom;                 /**< 0 if array of angles provided; 1,2 if uniform in half, full circle */ 
   float pswfParam;          /**< PSWF parameter */
   float sampl;              /**< "Oversampling" ratio */
   float MaxPixSiz;          /**< Max pixel size for reconstruction */
-  float R;                  /**< Region of interest (ROI) relative size */
+  float ROI;                /**< Region of interest (ROI) relative size */
   float X0;                 /**< Offset of ROI from rotation axis in units of center-to-edge distance */
   float Y0;                 /**< Offset of ROI from rotation axis in units of center-to-edge distance */
-  char fname[16];           /**< Name of filter function */
   int ltbl;                 /**< Number of elements in convolvent lookup tables */
+  char fname[16];           /**< Name of filter function */
+
+  // Backproject parameters
+  int BP_Method;            /**< 0=Riemann, 1=Radon */
+  int BP_MethodRiemann;
+  int BP_MethodRadon;
+  char BP_filterName[16];
+  int BP_filterSize;
+  int RiemannInterpolation;
+  int RiemannInterpolationNone;
+  int RiemannInterpolationBilinear;
+  int RiemannInterpolationCubic;
+  int RadonInterpolation;
+  int RadonInterpolationNone;
+  int RadonInterpolationLinear;
 } tomoParams_t;
 
 #ifdef __cplusplus
