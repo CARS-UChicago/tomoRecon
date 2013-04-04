@@ -44,7 +44,7 @@ static void workerTask(workerCreateStruct *pWCS)
 tomoRecon::tomoRecon(tomoParams_t *pTomoParams, float *pAngles)
   : pTomoParams_(pTomoParams),
     numPixels_(pTomoParams_->numPixels),
-    numSlices_(pTomoParams_->maxSlices),
+    numSlices_(pTomoParams_->numSlices),
     numProjections_(pTomoParams_->numProjections),
     paddedWidth_(pTomoParams_->paddedSinogramWidth),
     numThreads_(pTomoParams_->numThreads),
@@ -162,8 +162,8 @@ int tomoRecon::reconstruct(int numSlices, float *center, float *pInput, float *p
     return -1;
   }
 
-  if (numSlices > pTomoParams_->maxSlices) {
-    logMsg("%s: error, numSlices=%d, must be <= %d", functionName, numSlices, pTomoParams_->maxSlices);
+  if (numSlices > pTomoParams_->numSlices) {
+    logMsg("%s: error, numSlices=%d, must be <= %d", functionName, numSlices, pTomoParams_->numSlices);
     return -1;
   }
   
@@ -299,6 +299,7 @@ void tomoRecon::workerTask(int taskNum)
   sg_struct sgStruct;
   grid_struct gridStruct;
   float **S1=0, **S2=0, **R1=0, **R2=0;
+  float reconScale = pTomoParams_->reconScale;
   grid *pGrid=0;
   static const char *functionName="tomoRecon::workerTask";
   
@@ -311,7 +312,7 @@ void tomoRecon::workerTask(int taskNum)
   sgStruct.center   = 0; // This is done per-slice
   get_pswf(pTomoParams_->pswfParam, &gridStruct.pswf);
   gridStruct.sampl     = pTomoParams_->sampl;
-  gridStruct.R         = pTomoParams_->R;
+  gridStruct.R         = pTomoParams_->ROI;
   gridStruct.MaxPixSiz = pTomoParams_->MaxPixSiz;
   gridStruct.X0        = pTomoParams_->X0;
   gridStruct.Y0        = pTomoParams_->Y0;
@@ -386,11 +387,23 @@ void tomoRecon::workerTask(int taskNum)
            i++, pOut+=numPixels_, pRecon+=reconSize) {
         memcpy(pOut, pRecon+sinOffset, imageSize*sizeof(float));
       }
+      // Multiply by reconScale
+      if ((reconScale !=  0.) && (reconScale != 1.0)) {
+        for (i=0, pOut=toDoMessage.pOut1; i<imageSize*imageSize; i++) {
+          pOut[i] *= reconScale;
+        }
+      }
       if (doneMessage.numSlices == 2) {
         for (i=0, pOut=toDoMessage.pOut2, pRecon=recon2+sinOffset*reconSize; 
              i<imageSize;
              i++, pOut+=numPixels_, pRecon+=reconSize) {
           memcpy(pOut, pRecon+sinOffset, imageSize*sizeof(float));
+        }
+        // Multiply by reconScale
+        if ((reconScale !=  0.) && (reconScale != 1.0)) {
+          for (i=0, pOut=toDoMessage.pOut2; i<imageSize*imageSize; i++) {
+            pOut[i] *= reconScale;
+          }
         }
       }
       epicsTimeGetCurrent(&tStop);
@@ -479,7 +492,7 @@ void tomoRecon::sinogram(float *pIn, float *pOut)
         if (numAir > 0)
             ratio = pInData[j]/air[j];
         else
-            ratio = pInData[j]/10000.;
+            ratio = pInData[j] * pTomoParams_->sinoScale;
         if (ratio <= 0.) ratio = 1.;
         outData = -log(ratio);
         pOutData[sinOffset + j] = outData;
