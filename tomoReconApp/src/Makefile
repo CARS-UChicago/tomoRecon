@@ -30,7 +30,7 @@ endif
 
 tomoRecon_SRCS += tomoRecon.cpp
 tomoRecon_SRCS += grid.cpp pswf.c filters.c
-tomoRecon_SRCS += tomoReconIDL.cpp
+tomoRecon_SRCS += tomoReconIDL.cpp fftwIDL.cpp
 
 tomoRecon_LIBS_WIN32 += libfftw3f-3
 # To use the version of fftw3f included with tomoRecon use this line
