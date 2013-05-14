@@ -19,7 +19,7 @@ pro fft_test2d, nx=nx, ny=ny, isign=isign, nloop=nloop, f0, f1, f2, f3
    t0 = systime(1)
    for i=0, nloop-1 do begin 
       f3 = data
-      fft_test2f, f3, isign
+      fftw_2d, f3, isign
    endfor
    print, 'Time with FFTW', systime(1)-t0
 
