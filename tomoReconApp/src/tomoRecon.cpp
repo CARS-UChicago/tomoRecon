@@ -450,10 +450,12 @@ void tomoRecon::sinogram(float *pIn, float *pOut)
 {
   int i, j, k;
   int numAir = pTomoParams_->airPixels;
+  int paddingAverage = pTomoParams_->paddingAverage;
   int ringWidth = pTomoParams_->ringWidth;
   int sinOffset = (paddedWidth_ - numPixels_)/2;
   float *air=0, *averageRow=0, *smoothedRow=0;
   float airLeft, airRight, airSlope, ratio, outData;
+  float padLeft, padRight;
   float *pInData;
   float *pOutData;
   //static const char *functionName = "tomoRecon::sinogram";
@@ -497,6 +499,18 @@ void tomoRecon::sinogram(float *pIn, float *pOut)
         outData = -log(ratio);
         pOutData[sinOffset + j] = outData;
         if (ringWidth > 0) averageRow[j] += outData;
+      }
+    }
+    if (paddingAverage > 0) {
+      for (j=0, padLeft=0, padRight=0; j<paddingAverage; j++) {
+        padLeft += pOutData[sinOffset + j];
+        padRight += pOutData[sinOffset + numPixels_ - 1 - j];
+      }
+      padLeft /= paddingAverage;
+      padRight /= paddingAverage;
+      for (j=0; j<sinOffset; j++) {
+        pOutData[j] = padLeft;
+        pOutData[paddedWidth_ - 1 - j] = padRight;
       }
     }
   }

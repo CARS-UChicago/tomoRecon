@@ -46,6 +46,7 @@ typedef struct {
   float sinoScale;          /**< Scale factor to multiply sinogram when airPixels=0 */
   float reconScale;         /**< Scale factor to multiple reconstruction */
   int paddedSinogramWidth;  /**< Number of pixels to pad the sinogram to;  must be power of 2 and >= numPixels */
+  int paddingAverage;       /**< Number of pixels to average on each side of sinogram to compute padding. 0 pixels pads with 0.0 */
   int airPixels;            /**< Number of pixels of air on each side of sinogram to use for secondary normalization */
   int ringWidth;            /**< Number of pixels in smoothing kernel when doing ring artifact reduction; 0 disables ring artifact reduction */
   int fluorescence;         /**< Set to 1 if the data are fluorescence data and should not have the log taken when computing sinogram */
