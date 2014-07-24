@@ -20,6 +20,7 @@ pro tomo_params__define
     sinoScale: 10000.,       $ ; Scale factor to multiply sinogram when airPixels=0
     reconScale: 1.e6,        $ ; Scale factor to multiple reconstruction
     paddedSinogramWidth: 0L, $ ; Number of pixels in sinogram after padding
+    paddingAverage: 0L,      $ ; Number of pixels to average on each side of sinogram to compute padding. 0 pixels pads with 0.0 
     airPixels: 0L,           $ ; Number of pixels of air to average at each end of sinogram row
     ringWidth: 0L,           $ ; Number of pixels to smooth by when removing ring artifacts
     fluorescence: 0L,        $ ; 0=absorption data, 1=fluorescence
