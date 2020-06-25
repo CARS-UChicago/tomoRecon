@@ -17,7 +17,7 @@ pro tomo_params__define
     numPixels: 0L,           $ ; Number of pixels in sinogram row before padding
     numProjections: 0L,      $ ; Number of angles
     numSlices: 0L,           $ ; Number of slices
-    sinoScale: 10000.,       $ ; Scale factor to multiply sinogram when airPixels=0
+    sinoScale: 1/10000.,     $ ; Scale factor to multiply sinogram when airPixels=0
     reconScale: 1.e6,        $ ; Scale factor to multiple reconstruction
     paddedSinogramWidth: 0L, $ ; Number of pixels in sinogram after padding
     paddingAverage: 0L,      $ ; Number of pixels to average on each side of sinogram to compute padding. 0 pixels pads with 0.0 
