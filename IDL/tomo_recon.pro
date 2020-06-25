@@ -138,13 +138,22 @@ end
 ;   libtomoRecon.so (Linux)  or tomoRecon.dll (Windows), which is written in C++.
 ;
 ; RESTRICTIONS:
-;   TOMO_RECON locates the tomoRecon IDL shareable library via the environment variable
-;   first by seeing if the environment variable TOMO_RECON_SHARE exists.  If it does then this must point to the
-;   complete path to the shareable library, e.g. /usr/local/lib/libtomoRecon.so.  
-;   If the environment variables does not exist, then it looks for the shareable library in the IDL "path", and the
+;   TOMO_RECON locates the tomoRecon IDL shareable library first by seeing if the environment variable TOMO_RECON_SHARE exists.  
+;   If it does then this must point to the complete path to the shareable library.  
+;   On Linux this might be e.g. /home/myaccount/idl_tomography/tomoRecon_linux_x86_64.so.
+;   On Windows it might be C:\idl_tomography\tomoRecon_Win32_x86_64.dll. 
+;   If the environment variable does not exist, then it looks for the shareable library in the IDL "path", and the
 ;   shareable library must be named: 'tomoRecon_' + !version.os + '_' + !version.arch + '.so' or '.dll'
-;   For example, tomoRecon_Win32_x86_64.dll or tomoRecon_linux_x86_64.so.  This can be done with soft-links to the
-;   actual shareable library file.
+;   For example, tomoRecon_Win32_x86_64.dll or tomoRecon_linux_x86_64.so.  On Linux this can be done with soft-links to the
+;   actual shareable library file if necessary. 
+;   The search of the IDL "path" only works when using the licensed version of IDL.
+;   When using the free IDL Virtual Machine the TOMO_RECON_SHARE environment variable must be defined.
+;
+;   On Windows tomoRecon also needs to be able to find the shareable DLL for the FFTW library.
+;   Unfortunately because this library is not called directly by IDL, but only indirectly by the tomoRecon library,
+;   the location of the FFTW library must be added to your PATH environment variable.
+;   This is done by adding something like the following to your path, C:\idl_tomography\win64dll, where win64dll
+;   is a directory shipped with the GSECARS tomography software.
 ;
 ; EXAMPLE:
 ;   TOMO_RECON, input, output, center=419
