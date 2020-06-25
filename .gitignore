@@ -1,0 +1,10 @@
+/bin/
+/lib/
+/include/
+/configure/*.local
+*~
+O.*
+*.swp
+cdCommands
+envPaths
+dllPath.bat
