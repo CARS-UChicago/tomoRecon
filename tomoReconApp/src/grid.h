@@ -61,6 +61,7 @@ typedef struct {
    float (*filter)(float); /**< Pointer to filter function */
    long ltbl;		           /**< Number of elements in convolvent lookup tables. */
    int verbose;            /**< Debug printing flag */
+   FILE *debugFile;       /**< File to write debugging messages to */
 } grid_struct;
 
 #ifdef __cplusplus
@@ -82,6 +83,7 @@ class grid {
 public:
   grid(grid_struct *GP,sg_struct *SGP, long *imgsiz);
   ~grid();
+  void logMsg(const char *pFormat, ...);
   void recon(float center, float** G1,float** G2,float*** S1,float*** S2);
   void filphase_su(long pd,float fac, float(*pf)(float),complex *A);
   void pswf_su(pswf_struct *pswf,long ltbl, 
@@ -117,6 +119,7 @@ private:
   fftwf_plan backward_1d_plan;
   fftwf_plan forward_2d_plan;
   int verbose;   /* Debug printing flag */
+  FILE *debugFile;
 };
 #endif
 
