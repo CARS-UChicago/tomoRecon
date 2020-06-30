@@ -319,6 +319,7 @@ void tomoRecon::workerTask(int taskNum)
   gridStruct.ltbl      = pTomoParams_->ltbl;
   gridStruct.filter    = get_filter(pTomoParams_->fname);
   gridStruct.verbose   = (debug_ > 1) ? 1 : 0;
+  gridStruct.debugFile = debugFile_;
 
   // Must take a mutex when creating grid object, because it creates fftw plans, which is not thread safe
   epicsMutexLock(fftwMutex_);
