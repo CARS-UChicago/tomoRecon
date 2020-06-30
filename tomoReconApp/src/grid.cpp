@@ -4,6 +4,25 @@
       Use native FFTW interface.
 */
 
+#ifdef _WIN32
+  #include <windows.h>
+  static LARGE_INTEGER countsPerSecond; 
+  static double getCurrentTime() {
+    LARGE_INTEGER count;
+    if (countsPerSecond.QuadPart == 0) QueryPerformanceFrequency(&countsPerSecond);
+    QueryPerformanceCounter(&count);
+    return double(count.QuadPart)/countsPerSecond.QuadPart;
+  }
+#else
+  #include <time.h>
+  static double getCurrentTime() {
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    return ts.tv_sec + ts.tv_nsec/1e9;
+  }
+#endif
+
+#include <stdarg.h>
 #include "grid.h"
 
 /**** Macros and typedefs used in this module only ****/
@@ -66,7 +85,10 @@ grid::grid(grid_struct *GP,sg_struct *SGP, long *imgsiz)
   pswf=GP->pswf;
   C=pswf->C;
   verbose = GP->verbose;
-  if (verbose) printf("grid::grid \n"
+  debugFile = GP->debugFile;
+  
+//  if (verbose) logMsg("grid::grid \n"
+  fprintf(debugFile, "grid::grid \n"
        "SGP->n_ang=%d\n"
        "SGP->n_det=%d\n"
        "SGP->geom=%d\n"
@@ -175,6 +197,20 @@ grid::~grid()
   fftwf_free(HData);
 }
 
+void grid::logMsg(const char *pFormat, ...)
+{
+  va_list     pvar;
+  char message[256];
+
+  va_start(pvar,pFormat);
+  vsprintf(message, pFormat, pvar);
+  if (debugFile == stdout)
+    strcat(message, "\r\n");
+  else
+    strcat(message, "\n");
+  fprintf(debugFile, message);
+  fflush(debugFile);
+}
 
 
 /** Reconstructs two real slice images from their sinograms.
@@ -188,18 +224,18 @@ grid::~grid()
 void grid::recon(float center, float** G1,float** G2,float*** S1,float*** S2)
 {
 
-  if(verbose)printf(
-                    "grid::recon(): center=%f, M0=%ld M= %ld pdim=%ld L=%f scale=%f\n",
-                    center, M0,M,pdim,L,scale);
+  double t1, t2, t3, t4;
 
+  if (verbose) logMsg("grid::recon(): center=%f, M0=%ld M= %ld pdim=%ld L=%f scale=%f",
+                     center, M0,M,pdim,L,scale);
+
+  t1 = getCurrentTime();
   {        /*** First clear the array H ***/
     long iu,iv;
     for(iu=0;iu<M;iu++) 
       for(iv=0;iv<M;iv++)
         H[iu][iv].r=H[iu][iv].i=0.0;
   }
-
-  if(verbose)printf("Start Phase 1\n");
 
   {        /***Phase 1 ***************************************
 
@@ -341,9 +377,7 @@ void grid::recon(float center, float** G1,float** G2,float*** S1,float*** S2)
 
   }  /*** End phase 1 ************************************************/        
 
-
-  if(verbose)printf("Start Phase 2\n");
-
+  t2 = getCurrentTime();
   {        /*** Phase 2 ********************************************
 
              Carry out a 2D inverse FFT on the array H.
@@ -363,8 +397,8 @@ void grid::recon(float center, float** G1,float** G2,float*** S1,float*** S2)
 
   }  /*** End phase 2 ************************************************/
 
-  if(verbose)printf("Start Phase 3\n");
 
+  t3 = getCurrentTime();
   { /*** Phase 3 ******************************************************
 
          Copy the real and imaginary parts of the complex data from H[][],
@@ -433,6 +467,13 @@ void grid::recon(float center, float** G1,float** G2,float*** S1,float*** S2)
 
   }  /*** End phase 3 *******************************************************/
 
+  t4 = getCurrentTime();
+  if (verbose)
+    logMsg("Time for Phase 1: %f\n"
+           "Time for Phase 2: %f\n"
+           "Time for Phase 3: %f\n"
+           "      Total time: %f", t2-t1, t3-t2, t4-t3, t4-t1);
+
   return;
 
 }  /*** End do_recon() ***/
@@ -454,7 +495,7 @@ void grid::filphase_su(long pd, float center,
   float norm=pi/pd/n_ang;        /* Normalization factor for
                                    back transform  7/7/98  */
 
-  if (verbose) printf("filphase_su, pd=%ld, center=%f, pf=%p\n", pd, center, pf);
+  if (verbose) logMsg("filphase_su, pd=%ld, center=%f, pf=%p", pd, center, pf);
   for(j=0;j<pd2;j++)
     {
       x=j*rtmp1;
