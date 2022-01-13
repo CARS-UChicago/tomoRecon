@@ -4,9 +4,12 @@ include $(TOP)/configure/CONFIG
 #  ADD MACRO DEFINITIONS AFTER THIS LINE
 #=============================
 
+# NOTE: When building on Windows use windows-x64-static.
+# That way the DLL won't depend on Com.dll, though it will still depend on fftw3f-3.dll.
+
 SHARED_LIBRARIES = YES
 STATIC_BUILD = YES
-LIBRARY_HOST += tomoRecon
+LOADABLE_LIBRARY_HOST += tomoRecon
 tomoRecon_LDFLAGS_Linux += $(STATIC_LDFLAGS)
 
 INC += fftw3.h
@@ -33,6 +36,7 @@ tomoRecon_SRCS += grid.cpp pswf.c filters.c
 tomoRecon_SRCS += tomoReconIDL.cpp fftwIDL.cpp
 
 tomoRecon_LIBS_WIN32 += libfftw3f-3
+tomoRecon_SYS_LIBS_WIN32 += dbghelp
 # To use the version of fftw3f included with tomoRecon use this line
 #tomoRecon_LIBS_Linux += fftw3f
 # To use the system version of fftw3f use this line
