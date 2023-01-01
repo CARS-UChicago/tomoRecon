@@ -11,6 +11,8 @@ SHARED_LIBRARIES = YES
 STATIC_BUILD = YES
 LOADABLE_LIBRARY_HOST += tomoRecon
 tomoRecon_LDFLAGS_Linux += $(STATIC_LDFLAGS)
+LOADABLE_LIBRARY_HOST += tomoPreprocess
+tomoPreprocess_LDFLAGS_Linux += $(STATIC_LDFLAGS)
 
 INC += fftw3.h
 
@@ -31,6 +33,8 @@ LIB_INSTALLS    += ../os/linux-x86/libfftw3f.a
 
 endif
 
+tomoRecon_SRCS += tomoPreprocess.cpp
+tomoRecon_SRCS += tomoPreprocessIDL.cpp
 tomoRecon_SRCS += tomoRecon.cpp
 tomoRecon_SRCS += grid.cpp pswf.c filters.c
 tomoRecon_SRCS += tomoReconIDL.cpp fftwIDL.cpp
