@@ -16,6 +16,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <vector>
+#include <algorithm>
 
 #include <epicsTime.h>
 
@@ -43,15 +45,12 @@ static void workerTask(workerCreateStruct *pWCS)
 * and numThreads threads that execute the workerTask function.
 * \param[in] pPreprocessParams A structure containing the tomography preprocessing parameters
 * \param[in] pAngles Array of projection angles in degrees */
-tomoPreprocess::tomoPreprocess(preprocessParams_t *pPreprocessParams)
-  : pPreprocessParams_(pPreprocessParams),
-    numPixels_(pPreprocessParams_->numPixels),
-    numSlices_(pPreprocessParams_->numSlices),
-    numProjections_(pPreprocessParams_->numProjections),
-    numThreads_(pPreprocessParams_->numThreads),
-    queueElements_(numProjections_),
-    debug_(pPreprocessParams_->debug),
-    preprocessComplete_(1),
+tomoPreprocess::tomoPreprocess(preprocessParamsStruct *pPreprocessParams, float *pDark, float *pFlat, epicsUInt16 *pInput, float *pOutput)
+  : params_(*pPreprocessParams),
+    pDark_(pDark),
+    pFlat_(pFlat),
+    preprocessComplete_(0),
+    projectionsRemaining_(params_.numProjections),
     shutDown_(0)
 
 {
@@ -59,7 +58,12 @@ tomoPreprocess::tomoPreprocess(preprocessParams_t *pPreprocessParams)
   char workerTaskName[20];
   epicsThreadId workerTaskId;
   workerCreateStruct *pWCS;
-  char *debugFileName = pPreprocessParams_->debugFileName;
+  char *debugFileName = params_.debugFileName;
+  epicsUInt16 *pIn = pInput;
+  float *pOut = pOutput;
+  toDoMessageStruct toDoMessage;
+  int projectionSize = params_.numPixels * params_.numSlices;
+  int status;
   int i;
   static const char *functionName="tomoPreprocess::tomoPreprocess";
 
@@ -67,13 +71,13 @@ tomoPreprocess::tomoPreprocess(preprocessParams_t *pPreprocessParams)
   if ((debugFileName) && (strlen(debugFileName) > 0)) {
     debugFile_ = fopen(debugFileName, "w");
   }
-  
-  if (debug_) logMsg("%s: entry, creating message queues, events, threads, etc.", functionName);
+
+  if (params_.debug) logMsg("%s: entry, creating message queues, events, threads, etc.", functionName);
  
-  toDoQueue_ = epicsMessageQueueCreate(queueElements_, sizeof(toDoMessage_t));
-  doneQueue_ = epicsMessageQueueCreate(queueElements_, sizeof(doneMessage_t));
-  workerWakeEvents_ = (epicsEventId *) malloc(numThreads_ * sizeof(epicsEventId));
-  workerDoneEvents_ = (epicsEventId *) malloc(numThreads_ * sizeof(epicsEventId));
+  toDoQueue_ = epicsMessageQueueCreate(params_.numProjections, sizeof(toDoMessageStruct));
+  doneQueue_ = epicsMessageQueueCreate(params_.numProjections, sizeof(doneMessageStruct));
+  workerWakeEvents_ = (epicsEventId *) malloc(params_.numThreads * sizeof(epicsEventId));
+  workerDoneEvents_ = (epicsEventId *) malloc(params_.numThreads * sizeof(epicsEventId));
   supervisorWakeEvent_ = epicsEventCreate(epicsEventEmpty);
   supervisorDoneEvent_ = epicsEventCreate(epicsEventEmpty);
 
@@ -88,7 +92,7 @@ tomoPreprocess::tomoPreprocess(preprocessParams_t *pPreprocessParams)
   }
 
   /* Create the worker tasks */
-  for (i=0; i<numThreads_; i++) {
+  for (i=0; i<params_.numThreads; i++) {
     workerWakeEvents_[i] = epicsEventCreate(epicsEventEmpty);
     workerDoneEvents_[i] = epicsEventCreate(epicsEventEmpty);
     sprintf(workerTaskName, "workerTask%d", i);
@@ -104,80 +108,10 @@ tomoPreprocess::tomoPreprocess(preprocessParams_t *pPreprocessParams)
       logMsg("%s epicsThreadCreate failure for workerTask %d", functionName, i);
       return;
     }
-  } 
-}
-
-/** Destructor for the tomoPreprocess class.
-* Calls shutDown() to stop any active preprocessing, which causes workerTasks to exit.
-* Waits for supervisor task to exit, which in turn waits for all workerTasks to exit.
-* Destroys the EPICS message queues, events and mutexes. Closes the debugging file. */
-tomoPreprocess::~tomoPreprocess() 
-{
-  int i;
-  int status;
-  static const char *functionName = "tomoPreprocess:~tomoPreprocess";
-  
-  if (debug_) logMsg("%s: entry, shutting down and cleaning up", functionName);
-  shutDown();
-  status = epicsEventWait(supervisorDoneEvent_);
-  if (status) {
-    logMsg("%s: error waiting for supervisorDoneEvent=%d", functionName, status);
   }
-  epicsMessageQueueDestroy(toDoQueue_);
-  epicsMessageQueueDestroy(doneQueue_);
-  epicsEventDestroy(supervisorWakeEvent_);
-  epicsEventDestroy(supervisorDoneEvent_);
-  for (i=0; i<numThreads_; i++) {
-    epicsEventDestroy(workerWakeEvents_[i]);
-    epicsEventDestroy(workerDoneEvents_[i]);
-  }
-  free(workerWakeEvents_);
-  free(workerDoneEvents_);
-  if (debugFile_ != stdout) fclose(debugFile_);
-}
-
-/** Function to start preprocessing a set of projections
-* Sends messages to workerTasks to begin the preprocesssing and wakes up
-* the supervisorTasks and workerTasks.
-* \param[in] numProjections Number of projections to preprocess
-* \param[in] center Rotation center to use for each slice
-* \param[in] pInput Pointer to input data [numPixels, numSlices, numProjections]
-* \param[out] pOutput Pointer to output data [numPixels, numPixels, numSlices] */
-int tomoPreprocess::preprocess(int numProjections, float *pDark, float *pFlat, epicsUInt16 *pInput, float *pOutput)
-{
-  epicsUInt16 *pIn;
-  float *pOut;
-  toDoMessage_t toDoMessage;
-  int projectionSize = numPixels_ * numSlices_;
-  int i;
-  int status;
-  static const char *functionName="tomoPreprocess::preprocess";
-
-  // If a preprocessingis already in progress return an error
-  if (debug_) logMsg("%s: entry, preprocessComplete_=%d", functionName, preprocessComplete_);
-  if (preprocessComplete_ == 0) {
-    logMsg("%s: error, preprocessing already in progress", functionName);
-    return -1;
-  }
-
-  if (numProjections > pPreprocessParams_->numProjections) {
-    logMsg("%s: error, numSlices=%d, must be <= %d", functionName, numProjections, pPreprocessParams_->numProjections);
-    return -1;
-  }
-  
-  numProjections_ = numProjections;
-  projectionsRemaining_ = numProjections_;
-  pDark = pDark;
-  pFlat = pFlat;
-  pInput_ = pInput;
-  pOutput_ = pOutput;
-  pIn = pInput_;
-  pOut = pOutput_;
-
-  preprocessComplete_ = 0;
 
   // Fill up the toDoQueue with projections to be preprocessed
-  for (i=0; i<numProjections_; i++) {
+  for (i=0; i<params_.numProjections; i++) {
     toDoMessage.projectionNumber = i;
     toDoMessage.pIn = pIn;
     toDoMessage.pOut = pOut;
@@ -190,11 +124,38 @@ int tomoPreprocess::preprocess(int numProjections, float *pDark, float *pFlat, e
     }
   }
   // Send events to start preprocessing
-  if (debug_) logMsg("%s: sending events to start preprocessing", functionName);
+  if (params_.debug) logMsg("%s: sending events to start preprocessing", functionName);
   epicsEventSignal(supervisorWakeEvent_);
-  for (i=0; i<numThreads_; i++) epicsEventSignal(workerWakeEvents_[i]);
+  for (i=0; i<params_.numThreads; i++) epicsEventSignal(workerWakeEvents_[i]);
+}
+
+/** Destructor for the tomoPreprocess class.
+* Calls shutDown() to stop any active preprocessing, which causes workerTasks to exit.
+* Waits for supervisor task to exit, which in turn waits for all workerTasks to exit.
+* Destroys the EPICS message queues, events and mutexes. Closes the debugging file. */
+tomoPreprocess::~tomoPreprocess() 
+{
+  int i;
+  int status;
+  static const char *functionName = "tomoPreprocess:~tomoPreprocess";
   
-  return 0;
+  if (params_.debug) logMsg("%s: entry, shutting down and cleaning up", functionName);
+  shutDown();
+  status = epicsEventWait(supervisorDoneEvent_);
+  if (status) {
+    logMsg("%s: error waiting for supervisorDoneEvent=%d", functionName, status);
+  }
+  epicsMessageQueueDestroy(toDoQueue_);
+  epicsMessageQueueDestroy(doneQueue_);
+  epicsEventDestroy(supervisorWakeEvent_);
+  epicsEventDestroy(supervisorDoneEvent_);
+  for (i=0; i<params_.numThreads; i++) {
+    epicsEventDestroy(workerWakeEvents_[i]);
+    epicsEventDestroy(workerDoneEvents_[i]);
+  }
+  free(workerWakeEvents_);
+  free(workerDoneEvents_);
+  if (debugFile_ != stdout) fclose(debugFile_);
 }
 
 /** Function to poll the status of the preprocessing
@@ -216,7 +177,7 @@ void tomoPreprocess::shutDown()
   shutDown_ = 1;
   // Send events to all threads waking them up
   epicsEventSignal(supervisorWakeEvent_);
-  for (i=0; i<numThreads_; i++) epicsEventSignal(workerWakeEvents_[i]);
+  for (i=0; i<params_.numThreads; i++) epicsEventSignal(workerWakeEvents_[i]);
 }
 
 /** Supervisor control task that runs as a separate thread. 
@@ -226,11 +187,11 @@ void tomoPreprocess::supervisorTask()
 {
   int i;
   int status;
-  doneMessage_t doneMessage;
+  doneMessageStruct doneMessage;
   static const char *functionName="tomoPreprocess::supervisorTask";
 
   while (1) {
-    if (debug_) logMsg("%s: waiting for wake event", functionName);
+    if (params_.debug) logMsg("%s: waiting for wake event", functionName);
     // Wait for a wake event
     epicsEventWait(supervisorWakeEvent_);
     if (shutDown_) goto done;
@@ -244,15 +205,15 @@ void tomoPreprocess::supervisorTask()
       }
       projectionsRemaining_--;
     }
-    if (debug_) logMsg("%s: All projections complete!", functionName);
+    if (params_.debug) logMsg("%s: All projections complete!", functionName);
     preprocessComplete_ = 1;
-    if (debug_) logMsg("%s: Preprocessing complete!", functionName);
+    if (params_.debug) logMsg("%s: Preprocessing complete!", functionName);
   }
   done:
   // Wait for the worker threads to exit before setting the preprocessing complete flag.
   // They will exit because the toDoQueue is now empty
-  for (i=0; i<numThreads_; i++) {
-    if (debug_) logMsg("%s: Beginning wait for worker task %d to complete, eventId=%p", 
+  for (i=0; i<params_.numThreads; i++) {
+    if (params_.debug) logMsg("%s: Beginning wait for worker task %d to complete, eventId=%p", 
           functionName, i, workerDoneEvents_[i]);
     status = epicsEventWaitWithTimeout(workerDoneEvents_[i], 1.0);
     if (status != epicsEventWaitOK) {
@@ -261,7 +222,7 @@ void tomoPreprocess::supervisorTask()
     }
   }
   // Send a signal to the destructor that the supervisor task is done
-  if (debug_) logMsg("%s: Exiting supervisor task.", functionName);
+  if (params_.debug) logMsg("%s: Exiting supervisor task.", functionName);
   epicsEventSignal(supervisorDoneEvent_);
 }
 
@@ -272,17 +233,16 @@ void tomoPreprocess::supervisorTask()
  */
 void tomoPreprocess::workerTask(int taskNum)
 {
-  toDoMessage_t toDoMessage;
-  doneMessage_t doneMessage;
+  toDoMessageStruct toDoMessage;
+  doneMessageStruct doneMessage;
   epicsEventId wakeEvent = workerWakeEvents_[taskNum];
   epicsEventId doneEvent = workerDoneEvents_[taskNum];
   epicsTime tStart, tStop;
   int status;
-  int i;
   static const char *functionName="tomoPreprocess::workerTask";
   
   while (1) {
-    if (debug_) logMsg("%s: %s waiting for wake event", functionName, epicsThreadGetNameSelf());
+    if (params_.debug) logMsg("%s: %s waiting for wake event", functionName, epicsThreadGetNameSelf());
     // Wait for an event signalling that preprocessing has started or exiting
     epicsEventWait(wakeEvent);
     if (shutDown_) goto done;
@@ -297,35 +257,75 @@ void tomoPreprocess::workerTask(int taskNum)
       
       epicsUInt16 *pIn = toDoMessage.pIn;
       float *pOut = toDoMessage.pOut;
-      int projectionSize = numPixels_ * numSlices_;
+      int projectionSize = params_.numPixels * params_.numSlices;
+      int numZingers=0;
       
-      for (i=0; i<projectionSize; i++) {
-        pOut[i] = scaleFactor_ * (pIn[i] - pDark_[i]) / pFlat_[i];
+      for (int i=0; i<projectionSize; i++) {
+        pOut[i] = (pIn[i] - pDark_[i]) / pFlat_[i];
       }
 
       tStop = epicsTime::getCurrent();
       doneMessage.normalizeTime = tStop - tStart;
- 
+
       tStart = epicsTime::getCurrent();
-      // Do zinger correction here 
+      int zw = params_.zingerWidth;
+      std::vector<float> windowValues(zw*zw, 0);
+      size_t windowSize2 = windowValues.size()/2;
+      auto medianTarget = windowValues.begin() + windowSize2;
+      // Zinger correction
+      // Outer loops move averaging window through the image
+      if ((zw > 0) && (params_.zingerThreshold > 0.0)) {
+        for (int i=0; i<params_.numSlices; i+=zw) {
+          for (int j=0; j<params_.numPixels; j+=zw) {
+            // First inner loops calculate the median of the pixels in the averaging window
+            int m = 0;
+            for (int k=0; k<zw; k++) {
+              int iy = std::min(i+k, params_.numSlices-1) * params_.numPixels;
+              for (int l=0; l<zw; l++) {
+                int ix = std::min(j+l, params_.numPixels-1);
+                windowValues[m++] = pOut[iy + ix];
+              }
+            }
+            std::nth_element(windowValues.begin(), medianTarget, windowValues.end());
+            float median = windowValues[windowSize2];
+            // Next inner loops replace pixels which are more than threshold above the median with the median
+            for (int k=0; k<zw; k++) {
+              int iy = std::min(i+k, params_.numSlices-1) * params_.numPixels;
+              for (int l=0; l<zw; l++) {
+                int ix = std::min(j+l, params_.numPixels-1);
+                if ( (pOut[iy + ix] - median) > params_.zingerThreshold) {
+                  numZingers++;
+                  pOut[iy + ix] = median;
+                }
+              }
+            }        
+          }
+        }
+      }
+
+      if ((params_.scaleFactor != 0.0) && (params_.scaleFactor != 1.0)) {
+        for (int i=0; i<projectionSize; i++) {
+          pOut[i] *= params_.scaleFactor;
+        }
+      }
       tStop = epicsTime::getCurrent();
       doneMessage.zingerTime = tStop - tStart;
       doneMessage.projectionNumber = toDoMessage.projectionNumber;
       status = epicsMessageQueueTrySend(doneQueue_, &doneMessage, sizeof(doneMessage));
       if (status) {
-        printf("%s, error calling epicsMessageQueueTrySend, status=%d", functionName, status);
+        logMsg("%s:, error calling epicsMessageQueueTrySend, status=%d", functionName, status);
       }
-      if (debug_ > 0) { 
-        logMsg("%s:, thread=%s, projection=%d, normalize time=%f, zinger time=%f", 
+      if (params_.debug) { 
+        logMsg("%s:, thread=%s, projection=%d, normalize time=%f, zinger time=%f, numZingers=%d", 
             functionName, epicsThreadGetNameSelf(), doneMessage.projectionNumber,
-            doneMessage.normalizeTime, doneMessage.zingerTime);
+            doneMessage.normalizeTime, doneMessage.zingerTime, numZingers);
       }
       if (shutDown_) break;
     }
   }
   done:
   epicsEventSignal(doneEvent);
-  if (debug_ > 0) {
+  if (params_.debug) {
     logMsg("tomoPreprocess::workerTask %s exiting, eventId=%p", 
         epicsThreadGetNameSelf(), doneEvent);
   }
