@@ -1,5 +1,19 @@
 # tomoRecon Release Notes
 
+## R2-0 (January XXX, 2023)
+- Added tomoPreprocess.cpp which does tomography preprocessing in C++ code.
+  This is about 10-15X faster than tomopy or IDL for these operations.
+  The proprocessing does dark field, flat field, and zinger corrections.
+- Added support for building with windows-x64-static architecture,
+  so DLL does not depend on EPICS Com.dll, that code is included in tomoRecon.dll.
+- Add logMsg function so debugging it written to a file.
+  This is needed for IDL on Windows, where stdout is not available.
+- Use the system version of fftw3f on Linux, not version in tomoRecon repository.
+- Added code to make fftw directly callable from IDL.
+- Fixed errors in FFT directions.
+- Fixed major error in air normalization.
+- Fixed minor error in ring artifact removal.
+
 ## R1-2 (March 11, 2013)
 - Added libfftw3f.a in tomoReconApp/src/os/linux-x86 and linux-x86_64 to the SVN
   repository and source code distribution. Previous source-code releases were missing
