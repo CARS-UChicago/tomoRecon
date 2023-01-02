@@ -17,23 +17,24 @@
 // We use static variables because IDL does not really handle passing pointers (though it can be faked with LongLong type)
 // and because the IDL variable for preprocessParams can disappear, it does not have the required lifetime.
 static tomoPreprocess *pTomoPreprocess = 0;
-static preprocessParams_t preprocessParams;
 
 extern "C" {
 /** Function to create a tomoPreprocess object from IDL. 
  * \param[in] argc Number of parameters = 1
  * \param[in] argv Array of pointers.<br/>
- *            argv[0] = Pointer to a preprocessParams_t structure, which defines the preprocessing parameters <br/>
+ *            argv[0] = Pointer to a preprocessParamsStruct structure, which defines the preprocessing parameters <br/>
  * These arguments are copied to static variables in this file, because the IDL variables could be deleted
  * and returned to the heap while the tomoPreprocess object still exists. */
 epicsShareFunc void epicsShareAPI tomoPreprocessCreateIDL(int argc, char *argv[])
 {
-  preprocessParams_t *pPreprocessParams = (preprocessParams_t *)argv[0];
+  preprocessParamsStruct *pPreprocessParams = (preprocessParamsStruct *)argv[0];
+  float *pDark     = (float *)argv[1];
+  float *pFlat     = (float *)argv[2];
+  epicsUInt16 *pIn = (epicsUInt16 *)argv[3];
+  float *pOut      = (float *)argv[4];
   
-  // Make a local copy of preprocessParams and angles because the IDL variables could be deleted
-  memcpy(&preprocessParams, pPreprocessParams, sizeof(preprocessParams));
   if (pTomoPreprocess) delete pTomoPreprocess;
-  pTomoPreprocess = new tomoPreprocess(&preprocessParams);
+  pTomoPreprocess = new tomoPreprocess(pPreprocessParams, pDark, pFlat, pIn, pOut);
 }
 
 /** Function to delete the tomoPreprocess object created with tomoPreprocessCreateIDL.
@@ -44,27 +45,6 @@ epicsShareFunc void epicsShareAPI tomoPreprocessDeleteIDL(int argc, char *argv[]
   if (pTomoPreprocess == 0) return;
   delete pTomoPreprocess;
   pTomoPreprocess = 0;
-}
-
-/** Function to run preprocessing using the tomoPreprocess object created with tomoPreprocessCreateIDL.
- * \param[in] argc Number of parameters = 5
- * \param[in] argv Array of pointers. <br/>
- *            argv[0] = Pointer to a number of projections to preprocess <br/>
- *            argv[1] = Pointer to float array of dark field <br/>
- *            argv[2] = Pointer to float array of flat field <br/>
- *            argv[3] = Pointer to unsigned 16-bit array of input projections [numPixels, numSlices, numProjections] <br/>
- *            argv[4] = Pointer to float array of normalized output [numPixels, numSlices, numProjections]
- */
-epicsShareFunc void epicsShareAPI tomoPreprocessRunIDL(int argc, char *argv[])
-{
-  int *numProjections =   (int *)argv[0];
-  float *pDark   = (float *)argv[1];
-  float *pFlat   = (float *)argv[1];
-  epicsUInt16 *pIn = (epicsUInt16 *)argv[2];
-  float *pOut    = (float *)argv[3];
-
-  if (pTomoPreprocess == 0) return;
-  pTomoPreprocess->preprocess(*numProjections, pDark, pFlat, pIn, pOut);
 }
 
 /** Function to poll the status of a preprocessing started with tomoPreprocessRunIDL.
