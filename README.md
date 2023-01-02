@@ -7,7 +7,8 @@ etc. It uses a C++ version of the Gridrec software for the actual reconstruction
 The library is provided in both source code form, and as 64-bit shareable libraries
 for Linux and Windows. The shareable libraries can be called from C++, IDL, GDL, or other languages.
 
-tomoRecon is described in this [paper from the 2012 SPIE X-Ray Tomography VII conference](http://github.com/CARS-UChicago/tomoRecon/documentation/SPIE_tomoRecon.pdf).
+tomoRecon is described in this [paper from the 2012 SPIE X-Ray Tomography VII conference]
+(https://github.com/CARS-UChicago/tomoRecon/blob/master/documentation/SPIE_tomoRecon.pdf).
 
 IDL and GDL can be used as the "front-end" to tomoRecon, with IDL or GDL reading and writing the files and displaying images. 
 There are [IDL routines](http://github.com/CARS-UChicago/IDL_Tomography) that call tomoRecon, including a GUI.
