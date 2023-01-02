@@ -11,8 +11,8 @@ SHARED_LIBRARIES = YES
 STATIC_BUILD = YES
 LOADABLE_LIBRARY_HOST += tomoRecon
 tomoRecon_LDFLAGS_Linux += $(STATIC_LDFLAGS)
-LOADABLE_LIBRARY_HOST += tomoPreprocess
-tomoPreprocess_LDFLAGS_Linux += $(STATIC_LDFLAGS)
+
+USR_CXXFLAGS_Linux += -std=c++11
 
 INC += fftw3.h
 
