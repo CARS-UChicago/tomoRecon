@@ -224,7 +224,7 @@ void grid::logMsg(const char *pFormat, ...)
 void grid::recon(float center, float** G1,float** G2,float*** S1,float*** S2)
 {
 
-  double t1, t2, t3, t4;
+  double t1, t11, t12=0, t13=0, t14=0, tx, ty, t2, t3, t4;
 
   if (verbose) logMsg("grid::recon(): center=%f, M0=%ld M= %ld pdim=%ld L=%f scale=%f",
                      center, M0,M,pdim,L,scale);
@@ -304,13 +304,15 @@ void grid::recon(float center, float** G1,float** G2,float*** S1,float*** S2)
         previousCenter = center;
     }          
 
+    t11 = getCurrentTime();
     for(n=0;n<n_ang;n++)     /*** Start loop on angles */
       {
         int j,k;
         if(flag) offset=(X0*COSE[n]+Y0*SINE[n])*pi;
 
 
-        j=0;
+       tx = getCurrentTime();
+       j=0;
         while(j<n_det)        
           {     
             cproj[j].r=G1[n][j];
@@ -324,8 +326,12 @@ void grid::recon(float center, float** G1,float** G2,float*** S1,float*** S2)
             j++;
           }
 
+        ty = getCurrentTime();
+        t12 += ty-tx;
         fftwf_execute(backward_1d_plan);   
  
+        tx = getCurrentTime();
+        t13 += tx-ty;
         for(j=1;j<pdim2;j++)
           {          /* Start loop on transform data */                        
 
@@ -372,7 +378,10 @@ void grid::recon(float center, float** G1,float** G2,float*** S1,float*** S2)
                     H[M-iu][M-iv].i += convolv*Cdata2.i;
                   }
               }
+
           } /*** End loop on transform data */
+          ty = getCurrentTime();
+          t14 += ty-tx;
       } /*** End loop on angles */
 
   }  /*** End phase 1 ************************************************/        
@@ -470,9 +479,13 @@ void grid::recon(float center, float** G1,float** G2,float*** S1,float*** S2)
   t4 = getCurrentTime();
   if (verbose)
     logMsg("Time for Phase 1: %f\n"
+           "Time for Phase 1_1: %f\n"
+           "Time for Phase 1_2: %f\n"
+           "Time for Phase 1_3: %f\n"
+           "Time for Phase 1_4: %f\n"
            "Time for Phase 2: %f\n"
            "Time for Phase 3: %f\n"
-           "      Total time: %f", t2-t1, t3-t2, t4-t3, t4-t1);
+           "      Total time: %f\n", t2-t1, t11-t1, t12, t13, t14, t3-t2, t4-t3, t4-t1);
 
   return;
 
