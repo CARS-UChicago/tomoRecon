@@ -181,7 +181,7 @@ int tomoRecon::reconstruct(int numSlices, float *center, float *pInput, float *p
     toDoMessage.sliceNumber = nextSlice;
     toDoMessage.pIn1 = pIn;
     toDoMessage.pOut1 = pOut;
-    toDoMessage.center = center[i*2] + (paddedWidth_ - numPixels_)/2.;
+    toDoMessage.center = float(center[i*2] + (paddedWidth_ - numPixels_)/2.);
     pIn += numPixels_;
     pOut += reconSize;
     nextSlice++;
@@ -300,6 +300,7 @@ void tomoRecon::workerTask(int taskNum)
   grid_struct gridStruct;
   float **S1=0, **S2=0, **R1=0, **R2=0;
   float reconScale = pTomoParams_->reconScale;
+  float reconOffset = pTomoParams_->reconOffset;
   grid *pGrid=0;
   static const char *functionName="tomoRecon::workerTask";
   
@@ -391,7 +392,7 @@ void tomoRecon::workerTask(int taskNum)
       // Multiply by reconScale
       if ((reconScale !=  0.) && (reconScale != 1.0)) {
         for (i=0, pOut=toDoMessage.pOut1; i<imageSize*imageSize; i++) {
-          pOut[i] *= reconScale;
+          pOut[i] = pOut[i]*reconScale + reconOffset;
         }
       }
       if (doneMessage.numSlices == 2) {
@@ -403,7 +404,7 @@ void tomoRecon::workerTask(int taskNum)
         // Multiply by reconScale
         if ((reconScale !=  0.) && (reconScale != 1.0)) {
           for (i=0, pOut=toDoMessage.pOut2; i<imageSize*imageSize; i++) {
-            pOut[i] *= reconScale;
+            pOut[i] = pOut[i]*reconScale + reconOffset;
           }
         }
       }
