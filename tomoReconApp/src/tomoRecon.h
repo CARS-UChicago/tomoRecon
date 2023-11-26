@@ -45,22 +45,15 @@ typedef struct {
   int numSlices;            /**< Maximum number of slices that will be passed to tomoRecon::reconstruct */
   float sinoScale;          /**< Scale factor to multiply sinogram when airPixels=0 */
   float reconScale;         /**< Scale factor to multiple reconstruction */
+  float reconOffset;        /**< Offset factor to multiple reconstruction */
   int paddedSinogramWidth;  /**< Number of pixels to pad the sinogram to;  must be power of 2 and >= numPixels */
   int paddingAverage;       /**< Number of pixels to average on each side of sinogram to compute padding. 0 pixels pads with 0.0 */
   int airPixels;            /**< Number of pixels of air on each side of sinogram to use for secondary normalization */
   int ringWidth;            /**< Number of pixels in smoothing kernel when doing ring artifact reduction; 0 disables ring artifact reduction */
   int fluorescence;         /**< Set to 1 if the data are fluorescence data and should not have the log taken when computing sinogram */
-
-  int reconMethod;          /**< 0=tomoRecon, 1=Gridrec, 2=Backproject */
-  int reconMethodTomoRecon;
-  int reconMethodGridrec;
-  int reconMethodBackproject;
-  
   int numThreads;           /**< Number of workerTask threads to create */
-  int slicesPerChunk;       /**< Number of slices to reconstruct per chunk */
   int debug;                /**< Debug output level; 0: only error messages, 1: debugging from tomoRecon, 2: debugging also from grid */
   char debugFileName[256];  /**< Name of file for debugging output;  use 0 length string ("") to send output to stdout */
-
   // These are gridRec parameters
   int geom;                 /**< 0 if array of angles provided; 1,2 if uniform in half, full circle */ 
   float pswfParam;          /**< PSWF parameter */
@@ -71,20 +64,6 @@ typedef struct {
   float Y0;                 /**< Offset of ROI from rotation axis in units of center-to-edge distance */
   int ltbl;                 /**< Number of elements in convolvent lookup tables */
   char fname[16];           /**< Name of filter function */
-
-  // Backproject parameters
-  int BP_Method;            /**< 0=Riemann, 1=Radon */
-  int BP_MethodRiemann;
-  int BP_MethodRadon;
-  char BP_filterName[16];
-  int BP_filterSize;
-  int RiemannInterpolation;
-  int RiemannInterpolationNone;
-  int RiemannInterpolationBilinear;
-  int RiemannInterpolationCubic;
-  int RadonInterpolation;
-  int RadonInterpolationNone;
-  int RadonInterpolationLinear;
 } tomoParams_t;
 
 #ifdef __cplusplus
