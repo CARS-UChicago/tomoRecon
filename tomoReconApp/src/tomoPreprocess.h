@@ -16,11 +16,17 @@
 #include <epicsTypes.h>
 #include <epicsThread.h>
 
+// Output data type
+typedef enum {
+  ODT_Float32,
+  ODT_UInt16
+} ODT_t;
+
 /** Structure that is passed from the constructor to the workerTasks in the toDoQueue */
 struct toDoMessageStruct {
   int projectionNumber;  /**< Number of this projection */
   epicsUInt16 *pIn;      /**< Pointer to raw projection */
-  float *pOut;           /**< Pointer to normalized output */
+  char *pOut;            /**< Pointer to normalized output */
 };
 
 /** Structure that is passed from the workerTask to the supervisorTask in the doneQueue */
@@ -41,6 +47,7 @@ struct preprocessParamsStruct {
   int zingerWidth;          /**< Smoothing width for zinger removal */
   float zingerThreshold;    /**< Threshold for zinger removal */
   float scaleFactor;        /**< Scale factor to multiply normalized data by */
+  int outputDataType;       /**< Output data type, ODT_t enum */
   int debug;                /**< Debug output level; 0: only error messages, 1: debugging from tomoPreprocess */
   char debugFileName[256];  /**< Name of file for debugging output;  use 0 length string ("") to send output to stdout */
 };
@@ -63,7 +70,7 @@ struct workerCreateStruct {
 */
 class tomoPreprocess {
 public:
-  tomoPreprocess(preprocessParamsStruct *pPreprocessParams, float *pDark, float *pFlat, epicsUInt16 *pInput, float *pOutput);
+  tomoPreprocess(preprocessParamsStruct *pPreprocessParams, float *pDark, float *pFlat, epicsUInt16 *pInput, char *pOutput);
   virtual ~tomoPreprocess();
   virtual void supervisorTask();
   virtual void workerTask(int taskNum);
