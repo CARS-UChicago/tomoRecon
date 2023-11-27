@@ -62,8 +62,8 @@ epicsShareFunc void epicsShareAPI tomoReconRunIDL(int argc, char *argv[])
 {
   int *numSlices =   (int *)argv[0];
   float *pCenter = (float *)argv[1];
-  float *pIn     = (float *)argv[2];
-  float *pOut    = (float *)argv[3];
+  char *pIn      =  (char *)argv[2];
+  char *pOut     =  (char *)argv[3];
 
   if (pTomoRecon == 0) return;
   pTomoRecon->reconstruct(*numSlices, pCenter, pIn, pOut);
