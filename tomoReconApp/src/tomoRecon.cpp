@@ -46,6 +46,8 @@ tomoRecon::tomoRecon(tomoParams_t *pTomoParams, float *pAngles)
     numPixels_(pTomoParams_->numPixels),
     numSlices_(pTomoParams_->numSlices),
     numProjections_(pTomoParams_->numProjections),
+    inputDataType_(pTomoParams_->inputDataType),
+    outputDataType_(pTomoParams_->outputDataType),
     paddedWidth_(pTomoParams_->paddedSinogramWidth),
     numThreads_(pTomoParams_->numThreads),
     pAngles_(pAngles),
@@ -56,7 +58,7 @@ tomoRecon::tomoRecon(tomoParams_t *pTomoParams, float *pAngles)
 
 {
   epicsThreadId supervisorTaskId;
-  char workerTaskName[20];
+  char workerTaskName[32];
   epicsThreadId workerTaskId;
   workerCreateStruct *pWCS;
   char *debugFileName = pTomoParams_->debugFileName;
@@ -145,14 +147,16 @@ tomoRecon::~tomoRecon()
 * \param[in] center Rotation center to use for each slice
 * \param[in] pInput Pointer to input data [numPixels, numSlices, numProjections]
 * \param[out] pOutput Pointer to output data [numPixels, numPixels, numSlices] */
-int tomoRecon::reconstruct(int numSlices, float *center, float *pInput, float *pOutput)
+int tomoRecon::reconstruct(int numSlices, float *center, char *pInput, char *pOutput)
 {
-  float *pIn, *pOut;
+  char *pIn, *pOut;
   toDoMessage_t toDoMessage;
   int reconSize = numPixels_ * numPixels_;
   int nextSlice=0;
   int i;
   int status;
+  int inputPixelSize=0;
+  int outputPixelSize=0;
   static const char *functionName="tomoRecon::reconstruct";
 
   // If a reconstruction is already in progress return an error
@@ -167,6 +171,32 @@ int tomoRecon::reconstruct(int numSlices, float *center, float *pInput, float *p
     return -1;
   }
   
+  switch (pTomoParams_->inputDataType) {
+    case IDT_Float32:
+      inputPixelSize = sizeof(epicsFloat32);
+      break;
+     case IDT_UInt16:
+      inputPixelSize = sizeof(epicsUInt16);
+      break;
+    default:
+      logMsg("Error: Unknown input data type");
+  }
+
+  switch (pTomoParams_->outputDataType) {
+    case ODT_Float32:
+      outputPixelSize = sizeof(epicsFloat32);
+      break;
+     case ODT_UInt16:
+      outputPixelSize = sizeof(epicsUInt16);
+      break;
+     case ODT_Int16:
+      outputPixelSize = sizeof(epicsInt16);
+      break;
+    default:
+      logMsg("Error: Unknown output data type");
+  }
+
+logMsg("inputPixelSize=%d, outputPixelSize=%d", inputPixelSize, outputPixelSize);
   numSlices_ = numSlices;
   slicesRemaining_ = numSlices_;
   pInput_ = pInput;
@@ -182,14 +212,14 @@ int tomoRecon::reconstruct(int numSlices, float *center, float *pInput, float *p
     toDoMessage.pIn1 = pIn;
     toDoMessage.pOut1 = pOut;
     toDoMessage.center = float(center[i*2] + (paddedWidth_ - numPixels_)/2.);
-    pIn += numPixels_;
-    pOut += reconSize;
+    pIn += numPixels_ * inputPixelSize;
+    pOut += reconSize * outputPixelSize;
     nextSlice++;
     if (nextSlice < numSlices_) {
       toDoMessage.pIn2 = pIn;
       toDoMessage.pOut2 = pOut;
-      pIn += numPixels_;
-      pOut += reconSize;
+      pIn += numPixels_ * inputPixelSize;
+      pOut += reconSize * outputPixelSize;
       nextSlice++;
     } else {
       toDoMessage.pIn2 = NULL;
@@ -292,10 +322,9 @@ void tomoRecon::workerTask(int taskNum)
   long reconSize;
   int imageSize;
   int status;
-  float *pOut;
-  int i;
+  int i, j;
   int sinOffset;
-  float *sin1=0, *sin2=0, *recon1=0, *recon2=0, *pRecon;
+  float *pIn1=0, *pIn2=0, *fIn1=0, *fIn2=0, *sin1=0, *sin2=0, *recon1=0, *recon2=0, *pRecon;
   sg_struct sgStruct;
   grid_struct gridStruct;
   float **S1=0, **S2=0, **R1=0, **R2=0;
@@ -304,6 +333,7 @@ void tomoRecon::workerTask(int taskNum)
   grid *pGrid=0;
   static const char *functionName="tomoRecon::workerTask";
   
+  if (reconScale == 0) reconScale = 1;
   sgStruct.n_ang    = numProjections_;
   sgStruct.n_det    = paddedWidth_;
   // Force n_det to be odd
@@ -334,6 +364,8 @@ void tomoRecon::workerTask(int taskNum)
   imageSize = reconSize;
   if (imageSize > numPixels_) imageSize = numPixels_;
 
+  fIn1   = (float *) calloc(numPixels_ * numProjections_, sizeof(float));
+  fIn2   = (float *) calloc(numPixels_ * numProjections_, sizeof(float));
   sin1   = (float *) calloc(paddedWidth_ * numProjections_, sizeof(float));
   sin2   = (float *) calloc(paddedWidth_ * numProjections_, sizeof(float));
   recon1 = (float *) calloc(reconSize * reconSize, sizeof(float));
@@ -373,38 +405,76 @@ void tomoRecon::workerTask(int taskNum)
       }
       epicsTimeGetCurrent(&tStart);
 
-      sinogram(toDoMessage.pIn1, sin1);
+logMsg("%s: %s toDoMessage.pIn1=%p", functionName, epicsThreadGetNameSelf(), toDoMessage.pIn1);
+      pIn1 = (float *)toDoMessage.pIn1;
+      if (inputDataType_ == IDT_UInt16) {
+        epicsUInt16 *pUInt16 = (epicsUInt16 *)toDoMessage.pIn1;
+        for (i=0; i<numPixels_*numProjections_; i++) {
+          fIn1[i] = (float) pUInt16[i];
+        }
+        pIn1 = fIn1;       
+      }
+logMsg("%s: %s calling sinogram pIn1=%p", functionName, epicsThreadGetNameSelf(), pIn1);
+      sinogram(pIn1, sin1);
       doneMessage.numSlices = 1;
+logMsg("%s: %s processing second slice", functionName, epicsThreadGetNameSelf());
       if (toDoMessage.pIn2) {
-        sinogram(toDoMessage.pIn2, sin2);
+logMsg("%s: %s toDoMessage.pIn2=%p", functionName, epicsThreadGetNameSelf(), toDoMessage.pIn2);
+        pIn2 = (float *)toDoMessage.pIn2;
+        if (inputDataType_ == IDT_UInt16) {
+          epicsUInt16 *pUInt16 = (epicsUInt16 *)toDoMessage.pIn2;
+          for (i=0; i<numPixels_*numProjections_; i++) {
+            fIn2[i] = (float) pUInt16[i];
+          }
+          pIn2 = fIn2;       
+        }
+logMsg("%s: %s calling sinogram pIn2=%p", functionName, epicsThreadGetNameSelf(), pIn2);
+        sinogram(pIn2, sin2);
         doneMessage.numSlices = 2;
       }
       epicsTimeGetCurrent(&tStop);
       doneMessage.sinogramTime = epicsTimeDiffInSeconds(&tStop, &tStart);
       epicsTimeGetCurrent(&tStart);
+logMsg("%s: %s calling recon=%p", functionName, epicsThreadGetNameSelf());
       pGrid->recon(toDoMessage.center, S1, S2, &R1, &R2);
-      // Copy to output array, discard padding
-      for (i=0, pOut=toDoMessage.pOut1, pRecon=recon1+sinOffset*reconSize; 
-           i<imageSize;
-           i++, pOut+=numPixels_, pRecon+=reconSize) {
-        memcpy(pOut, pRecon+sinOffset, imageSize*sizeof(float));
-      }
-      // Multiply by reconScale
-      if ((reconScale !=  0.) && (reconScale != 1.0)) {
-        for (i=0, pOut=toDoMessage.pOut1; i<imageSize*imageSize; i++) {
-          pOut[i] = pOut[i]*reconScale + reconOffset;
+      // Copy to output array, discard padding, apply scale and offset
+      epicsFloat32 *pOutF32    = (epicsFloat32 *) toDoMessage.pOut1;
+      epicsUInt16  *pOutUInt16 = (epicsUInt16 *)  toDoMessage.pOut1;
+      epicsInt16   *pOutInt16  = (epicsInt16 *)   toDoMessage.pOut1;
+      for (i=0, pRecon=recon1+sinOffset*reconSize; i<imageSize; i++, pRecon+=reconSize) {
+        switch (outputDataType_) {
+          case ODT_Float32:
+            for (j=0; j<imageSize; j++) pOutF32[j] = pRecon[j + sinOffset] * reconScale + reconOffset;
+            pOutF32 += imageSize;
+            break;
+          case ODT_UInt16:
+            for (j=0; j<imageSize; j++) pOutUInt16[j] = (epicsUInt16) (pRecon[j + sinOffset] * reconScale + reconOffset);
+            pOutUInt16 += imageSize;
+            break;
+          case ODT_Int16:
+            for (j=0; j<imageSize; j++) pOutInt16[j] = (epicsInt16) (pRecon[j + sinOffset] * reconScale + reconOffset);
+            pOutInt16 += imageSize;
+            break;
         }
       }
       if (doneMessage.numSlices == 2) {
-        for (i=0, pOut=toDoMessage.pOut2, pRecon=recon2+sinOffset*reconSize; 
-             i<imageSize;
-             i++, pOut+=numPixels_, pRecon+=reconSize) {
-          memcpy(pOut, pRecon+sinOffset, imageSize*sizeof(float));
-        }
-        // Multiply by reconScale
-        if ((reconScale !=  0.) && (reconScale != 1.0)) {
-          for (i=0, pOut=toDoMessage.pOut2; i<imageSize*imageSize; i++) {
-            pOut[i] = pOut[i]*reconScale + reconOffset;
+        epicsFloat32 *pOutF32    = (epicsFloat32 *) toDoMessage.pOut2;
+        epicsUInt16  *pOutUInt16 = (epicsUInt16 *)  toDoMessage.pOut2;
+        epicsInt16   *pOutInt16  = (epicsInt16 *)   toDoMessage.pOut2;
+        for (i=0, pRecon=recon2+sinOffset*reconSize; i<imageSize; i++, pRecon+=reconSize) {
+          switch (outputDataType_) {
+            case ODT_Float32:
+              for (j=0; j<imageSize; j++) pOutF32[j] = pRecon[j + sinOffset] * reconScale + reconOffset;
+              pOutF32 += imageSize;
+              break;
+            case ODT_UInt16:
+              for (j=0; j<imageSize; j++) pOutUInt16[j] = (epicsUInt16) (pRecon[j + sinOffset] * reconScale + reconOffset);
+              pOutUInt16 += imageSize;
+              break;
+            case ODT_Int16:
+              for (j=0; j<imageSize; j++) pOutInt16[j] = (epicsInt16) (pRecon[j + sinOffset] * reconScale + reconOffset);
+              pOutInt16 += imageSize;
+              break;
           }
         }
       }
@@ -424,6 +494,8 @@ void tomoRecon::workerTask(int taskNum)
     }
   }
   done:
+  if (fIn1) free(fIn1);
+  if (fIn2) free(fIn2);
   if (sin1) free(sin1);
   if (sin2) free(sin2);
   if (recon1) free(recon1);
