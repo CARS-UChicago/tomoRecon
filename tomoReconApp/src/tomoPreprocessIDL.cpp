@@ -31,7 +31,7 @@ epicsShareFunc void epicsShareAPI tomoPreprocessCreateIDL(int argc, char *argv[]
   float *pDark     = (float *)argv[1];
   float *pFlat     = (float *)argv[2];
   epicsUInt16 *pIn = (epicsUInt16 *)argv[3];
-  float *pOut      = (float *)argv[4];
+  char *pOut       = (char *)argv[4];
   
   if (pTomoPreprocess) delete pTomoPreprocess;
   pTomoPreprocess = new tomoPreprocess(pPreprocessParams, pDark, pFlat, pIn, pOut);
