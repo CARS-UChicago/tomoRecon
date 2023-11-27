@@ -17,14 +17,28 @@
 
 #include "grid.h"
 
+// Input data type
+typedef enum {
+  IDT_Float32,
+  IDT_UInt16
+} IDT_t;
+
+// Output data type
+typedef enum {
+  ODT_Float32,
+  ODT_UInt16,
+  ODT_Int16
+} ODT_t;
+
+
 /** Structure that is passed from the constructor to the workerTasks in the toDoQueue */
 typedef struct {
   int sliceNumber;  /**< Slice number of first slice */
   float center;     /**< Rotation center to use for these slices */
-  float *pIn1;      /**< Pointer to first input slice */
-  float *pIn2;      /**< Pointer to second input slice.  Can be NULL */
-  float *pOut1;     /**< Pointer to first output slice */
-  float *pOut2;     /**< Pointer to second output slice. Can be NULL */
+  char *pIn1;      /**< Pointer to first input slice */
+  char *pIn2;      /**< Pointer to second input slice.  Can be NULL */
+  char *pOut1;     /**< Pointer to first output slice */
+  char *pOut2;     /**< Pointer to second output slice. Can be NULL */
 } toDoMessage_t;
 
 /** Structure that is passed from the workerTask to the supervisorTask in the doneQueue */
@@ -43,6 +57,8 @@ typedef struct {
   int numPixels;            /**< Number of horizontal pixels in the input data */
   int numProjections;       /**< Number of projection angles in the input data */
   int numSlices;            /**< Maximum number of slices that will be passed to tomoRecon::reconstruct */
+  int inputDataType;        /**< Data type of input, IDT_t enum */
+  int outputDataType;       /**< Data type of output, ODT_t enum */
   float sinoScale;          /**< Scale factor to multiply sinogram when airPixels=0 */
   float reconScale;         /**< Scale factor to multiple reconstruction */
   float reconOffset;        /**< Offset factor to multiple reconstruction */
@@ -91,7 +107,7 @@ class tomoRecon {
 public:
   tomoRecon(tomoParams_t *pTomoParams, float *pAngles);
   virtual ~tomoRecon();
-  virtual int reconstruct(int numSlices, float *center, float *pInput, float *pOutput);
+  virtual int reconstruct(int numSlices, float *center, char *pInput, char *pOutput);
   virtual void supervisorTask();
   virtual void workerTask(int taskNum);
   virtual void sinogram(float *pIn, float *pOut);
@@ -104,11 +120,13 @@ private:
   int numPixels_;
   int numSlices_;
   int numProjections_;
+  int inputDataType_;
+  int outputDataType_;
   int paddedWidth_;
   int numThreads_;
   float *pAngles_;
-  float *pInput_;
-  float *pOutput_;
+  char *pInput_;
+  char *pOutput_;
   int queueElements_;
   int debug_;
   FILE *debugFile_;
