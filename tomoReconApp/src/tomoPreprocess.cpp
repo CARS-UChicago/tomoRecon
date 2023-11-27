@@ -45,7 +45,7 @@ static void workerTask(workerCreateStruct *pWCS)
 * and numThreads threads that execute the workerTask function.
 * \param[in] pPreprocessParams A structure containing the tomography preprocessing parameters
 * \param[in] pAngles Array of projection angles in degrees */
-tomoPreprocess::tomoPreprocess(preprocessParamsStruct *pPreprocessParams, float *pDark, float *pFlat, epicsUInt16 *pInput, float *pOutput)
+tomoPreprocess::tomoPreprocess(preprocessParamsStruct *pPreprocessParams, float *pDark, float *pFlat, epicsUInt16 *pInput, char *pOutput)
   : params_(*pPreprocessParams),
     pDark_(pDark),
     pFlat_(pFlat),
@@ -55,12 +55,12 @@ tomoPreprocess::tomoPreprocess(preprocessParamsStruct *pPreprocessParams, float 
 
 {
   epicsThreadId supervisorTaskId;
-  char workerTaskName[20];
+  char workerTaskName[30];
   epicsThreadId workerTaskId;
   workerCreateStruct *pWCS;
   char *debugFileName = params_.debugFileName;
   epicsUInt16 *pIn = pInput;
-  float *pOut = pOutput;
+  char *pOut = pOutput;
   toDoMessageStruct toDoMessage;
   int projectionSize = params_.numPixels * params_.numSlices;
   int status;
@@ -116,7 +116,10 @@ tomoPreprocess::tomoPreprocess(preprocessParamsStruct *pPreprocessParams, float 
     toDoMessage.pIn = pIn;
     toDoMessage.pOut = pOut;
     pIn += projectionSize;
-    pOut += projectionSize;
+    if (params_.outputDataType == ODT_UInt16)
+      pOut += projectionSize * sizeof(epicsUInt16);
+    else
+      pOut += projectionSize * sizeof(epicsFloat32);
     status = epicsMessageQueueTrySend(toDoQueue_, &toDoMessage, sizeof(toDoMessage));
     if (status) {
       logMsg("%s:, error calling epicsMessageQueueTrySend, status=%d", 
@@ -256,12 +259,26 @@ void tomoPreprocess::workerTask(int taskNum)
       tStart = epicsTime::getCurrent();
       
       epicsUInt16 *pIn = toDoMessage.pIn;
-      float *pOut = toDoMessage.pOut;
+      epicsUInt16 *pOutUInt16 = (epicsUInt16 *) toDoMessage.pOut;
+      epicsFloat32 *pOutFloat32 = (epicsFloat32 *) toDoMessage.pOut;
       int projectionSize = params_.numPixels * params_.numSlices;
       int numZingers=0;
+      float ratio;
+      float scaleFactor = params_.scaleFactor;
+      if (scaleFactor == 1) scaleFactor = 0.;
+      float zingerThreshold = params_.zingerThreshold;
+      if (scaleFactor != 0.) zingerThreshold *= scaleFactor;
       
       for (int i=0; i<projectionSize; i++) {
-        pOut[i] = (pIn[i] - pDark_[i]) / pFlat_[i];
+        ratio = (pIn[i] - pDark_[i]) / pFlat_[i];
+        if (scaleFactor != 0.) {
+          ratio *= scaleFactor;
+        }
+        if (params_.outputDataType == ODT_UInt16) {
+          pOutUInt16[i] = (epicsUInt16) ratio;
+        } else {
+          pOutFloat32[i] = ratio;
+        }
       }
 
       tStop = epicsTime::getCurrent();
@@ -283,7 +300,11 @@ void tomoPreprocess::workerTask(int taskNum)
               int iy = std::min(i+k, params_.numSlices-1) * params_.numPixels;
               for (int l=0; l<zw; l++) {
                 int ix = std::min(j+l, params_.numPixels-1);
-                windowValues[m++] = pOut[iy + ix];
+                if (params_.outputDataType == ODT_UInt16) {
+                  windowValues[m++] = pOutUInt16[iy + ix];
+                } else {
+                  windowValues[m++] = pOutFloat32[iy + ix];
+                }
               }
             }
             std::nth_element(windowValues.begin(), medianTarget, windowValues.end());
@@ -292,10 +313,18 @@ void tomoPreprocess::workerTask(int taskNum)
             for (int k=0; k<zw; k++) {
               int iy = std::min(i+k, params_.numSlices-1) * params_.numPixels;
               for (int l=0; l<zw; l++) {
-                int ix = std::min(j+l, params_.numPixels-1);
-                if ( (pOut[iy + ix] - median) > params_.zingerThreshold) {
-                  numZingers++;
-                  pOut[iy + ix] = median;
+                if (params_.outputDataType == ODT_UInt16) {
+                  int ix = std::min(j+l, params_.numPixels-1);
+                  if ( (pOutUInt16[iy + ix] - median) > zingerThreshold) {
+                    numZingers++;
+                    pOutUInt16[iy + ix] = (epicsUInt16) median;
+                  }
+                } else {
+                  int ix = std::min(j+l, params_.numPixels-1);
+                  if ( (pOutFloat32[iy + ix] - median) > zingerThreshold) {
+                    numZingers++;
+                    pOutFloat32[iy + ix] = median;
+                  }
                 }
               }
             }        
@@ -303,11 +332,6 @@ void tomoPreprocess::workerTask(int taskNum)
         }
       }
 
-      if ((params_.scaleFactor != 0.0) && (params_.scaleFactor != 1.0)) {
-        for (int i=0; i<projectionSize; i++) {
-          pOut[i] *= params_.scaleFactor;
-        }
-      }
       tStop = epicsTime::getCurrent();
       doneMessage.zingerTime = tStop - tStart;
       doneMessage.projectionNumber = toDoMessage.projectionNumber;
