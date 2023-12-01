@@ -13,7 +13,8 @@
  */
 
 #include <epicsMessageQueue.h>
-#include <epicsThread.h>
+#include <epicsEvent.h>
+#include <epicsMutex.h>
 
 #include "grid.h"
 
@@ -106,13 +107,13 @@ typedef struct {
 class tomoRecon {
 public:
   tomoRecon(tomoParams_t *pTomoParams, float *pAngles);
-  virtual ~tomoRecon();
-  virtual int reconstruct(int numSlices, float *center, char *pInput, char *pOutput);
-  virtual void supervisorTask();
-  virtual void workerTask(int taskNum);
-  virtual void sinogram(float *pIn, float *pOut);
-  virtual void poll(int *pReconComplete, int *pSlicesRemaining);
-  virtual void logMsg(const char *pFormat, ...);
+  ~tomoRecon();
+  int reconstruct(int numSlices, float *center, char *pInput, char *pOutput);
+  void supervisorTask();
+  void workerTask(int taskNum);
+  template <typename inputType> void sinogram(char *pIn, float *pOut);
+  void poll(int *pReconComplete, int *pSlicesRemaining);
+  void logMsg(const char *pFormat, ...);
 
 private:
   void shutDown();
