@@ -357,10 +357,14 @@ void grid::recon(float center, float** G1,float** G2,float*** S1,float*** S2)
             /* Note freq space origin is at (M2,M2), but we
                offset the indices U, V, etc. to range from 0 to M-1 */
 
-            iul=ceil(U-L2);iuh=floor(U+L2);
-            ivl=ceil(V-L2);ivh=floor(V+L2);
-            if(iul<1)iul=1;if(iuh>=M)iuh=M-1; 
-            if(ivl<1)ivl=1;if(ivh>=M)ivh=M-1; 
+            iul=ceil(U-L2);
+            iuh=floor(U+L2);
+            ivl=ceil(V-L2);
+            ivh=floor(V+L2);
+            if(iul<1)iul=1;
+            if(iuh>=M)iuh=M-1; 
+            if(ivl<1)ivl=1;
+            if(ivh>=M)ivh=M-1; 
 
             /* Note aliasing value (at index=0) is forced to zero */        
 
