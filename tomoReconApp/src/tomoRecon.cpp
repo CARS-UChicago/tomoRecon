@@ -16,6 +16,8 @@
 #include <stdarg.h>
 
 #include <epicsTime.h>
+#include <epicsThread.h>
+#include <epicsTypes.h>
 
 #include "tomoRecon.h"
 
@@ -196,7 +198,6 @@ int tomoRecon::reconstruct(int numSlices, float *center, char *pInput, char *pOu
       logMsg("Error: Unknown output data type");
   }
 
-logMsg("inputPixelSize=%d, outputPixelSize=%d", inputPixelSize, outputPixelSize);
   numSlices_ = numSlices;
   slicesRemaining_ = numSlices_;
   pInput_ = pInput;
@@ -324,7 +325,7 @@ void tomoRecon::workerTask(int taskNum)
   int status;
   int i, j;
   int sinOffset;
-  float *pIn1=0, *pIn2=0, *fIn1=0, *fIn2=0, *sin1=0, *sin2=0, *recon1=0, *recon2=0, *pRecon;
+  float *sin1=0, *sin2=0, *recon1=0, *recon2=0, *pRecon;
   sg_struct sgStruct;
   grid_struct gridStruct;
   float **S1=0, **S2=0, **R1=0, **R2=0;
@@ -364,8 +365,6 @@ void tomoRecon::workerTask(int taskNum)
   imageSize = reconSize;
   if (imageSize > numPixels_) imageSize = numPixels_;
 
-  fIn1   = (float *) calloc(numPixels_ * numProjections_, sizeof(float));
-  fIn2   = (float *) calloc(numPixels_ * numProjections_, sizeof(float));
   sin1   = (float *) calloc(paddedWidth_ * numProjections_, sizeof(float));
   sin2   = (float *) calloc(paddedWidth_ * numProjections_, sizeof(float));
   recon1 = (float *) calloc(reconSize * reconSize, sizeof(float));
@@ -405,37 +404,23 @@ void tomoRecon::workerTask(int taskNum)
       }
       epicsTimeGetCurrent(&tStart);
 
-logMsg("%s: %s toDoMessage.pIn1=%p", functionName, epicsThreadGetNameSelf(), toDoMessage.pIn1);
-      pIn1 = (float *)toDoMessage.pIn1;
       if (inputDataType_ == IDT_UInt16) {
-        epicsUInt16 *pUInt16 = (epicsUInt16 *)toDoMessage.pIn1;
-        for (i=0; i<numPixels_*numProjections_; i++) {
-          fIn1[i] = (float) pUInt16[i];
-        }
-        pIn1 = fIn1;       
+        sinogram <epicsUInt16> (toDoMessage.pIn1, sin1);
+      } else {
+        sinogram <epicsFloat32> (toDoMessage.pIn1, sin1);
       }
-logMsg("%s: %s calling sinogram pIn1=%p", functionName, epicsThreadGetNameSelf(), pIn1);
-      sinogram(pIn1, sin1);
       doneMessage.numSlices = 1;
-logMsg("%s: %s processing second slice", functionName, epicsThreadGetNameSelf());
       if (toDoMessage.pIn2) {
-logMsg("%s: %s toDoMessage.pIn2=%p", functionName, epicsThreadGetNameSelf(), toDoMessage.pIn2);
-        pIn2 = (float *)toDoMessage.pIn2;
         if (inputDataType_ == IDT_UInt16) {
-          epicsUInt16 *pUInt16 = (epicsUInt16 *)toDoMessage.pIn2;
-          for (i=0; i<numPixels_*numProjections_; i++) {
-            fIn2[i] = (float) pUInt16[i];
-          }
-          pIn2 = fIn2;       
+          sinogram <epicsUInt16> (toDoMessage.pIn2, sin2);
+        } else {
+          sinogram <epicsFloat32> (toDoMessage.pIn2, sin2);
         }
-logMsg("%s: %s calling sinogram pIn2=%p", functionName, epicsThreadGetNameSelf(), pIn2);
-        sinogram(pIn2, sin2);
-        doneMessage.numSlices = 2;
+          doneMessage.numSlices = 2;
       }
       epicsTimeGetCurrent(&tStop);
       doneMessage.sinogramTime = epicsTimeDiffInSeconds(&tStop, &tStart);
       epicsTimeGetCurrent(&tStart);
-logMsg("%s: %s calling recon=%p", functionName, epicsThreadGetNameSelf());
       pGrid->recon(toDoMessage.center, S1, S2, &R1, &R2);
       // Copy to output array, discard padding, apply scale and offset
       epicsFloat32 *pOutF32    = (epicsFloat32 *) toDoMessage.pOut1;
@@ -494,8 +479,6 @@ logMsg("%s: %s calling recon=%p", functionName, epicsThreadGetNameSelf());
     }
   }
   done:
-  if (fIn1) free(fIn1);
-  if (fIn2) free(fIn2);
   if (sin1) free(sin1);
   if (sin2) free(sin2);
   if (recon1) free(recon1);
@@ -520,7 +503,8 @@ logMsg("%s: %s calling recon=%p", functionName, epicsThreadGetNameSelf());
  * \param[in] pIn Pointer to normalized data input for this slice [numPixels, slice, numProjections]
  * \param[out] pOut Pointer to sinogram output [paddedSingramWidth, numProjections]
  */
-void tomoRecon::sinogram(float *pIn, float *pOut)
+template <typename inputType> 
+void tomoRecon::sinogram(char *pIn, float *pOut)
 {
   int i, j, k;
   int numAir = pTomoParams_->airPixels;
@@ -530,7 +514,7 @@ void tomoRecon::sinogram(float *pIn, float *pOut)
   float *air=0, *averageRow=0, *smoothedRow=0;
   float airLeft, airRight, airSlope, ratio, outData;
   float padLeft, padRight;
-  float *pInData;
+  inputType *pInData;
   float *pOutData;
   //static const char *functionName = "tomoRecon::sinogram";
   
@@ -540,7 +524,7 @@ void tomoRecon::sinogram(float *pIn, float *pOut)
      smoothedRow = (float *) calloc(numPixels_, sizeof(float));
   }
   
-  for (i=0, pInData=pIn, pOutData=pOut; 
+  for (i=0, pInData=(inputType *)pIn, pOutData=pOut; 
        i<numProjections_;
        i++, pInData+=numPixels_*numSlices_, pOutData+=paddedWidth_) {
     if (numAir > 0) {
